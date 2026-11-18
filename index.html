@@ -40,6 +40,7 @@
     --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   [data-theme="dark"] {
+    color-scheme: dark;
     --bg: #0b1411; --surface: #12201b; --surface2: #1a2c25;
     --text: #e7f1ec; --muted: #9db4a8; --line: #25382f;
     --accent: #2dd4bf; --accent-soft: #12332d;
@@ -111,6 +112,25 @@
   .bouton:hover, select:hover { border-color: var(--accent); }
   #etat { color: var(--muted); font-size: .88rem; margin-left: auto; }
   #etat.erreur { color: var(--l4); font-weight: 600; }
+
+  /* ---------- Bandeau de l'onglet « Courbes » ---------- */
+  .outils-courbes { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 0; }
+  .rang { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .rang-titre { min-width: 70px; font-family: var(--font-titre); font-size: .98rem; }
+  .presets { display: flex; gap: 6px; margin-left: 4px; }
+  .bouton.actif { background: var(--accent); border-color: var(--accent); color: #fff; }
+  [data-theme="dark"] .bouton.actif { color: var(--bg); }
+  input[type="datetime-local"], input[type="number"] {
+    font: inherit; font-size: .92rem; color: var(--text); background: var(--surface2);
+    border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px;
+  }
+  input[type="datetime-local"]:hover, input[type="number"]:hover { border-color: var(--accent); }
+  .axe { display: flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--muted); }
+  .axe > span:first-child { font-weight: 600; color: var(--text); }
+  .axe input { width: 90px; padding: 5px 8px; }
+  input.invalide { border-color: var(--l4); outline: 2px solid var(--l4); }
+  #etat2 { color: var(--muted); font-size: .88rem; margin-left: auto; }
+  #etat2.erreur { color: var(--l4); font-weight: 600; }
 
   /* ---------- Carte générique ---------- */
   .carte {
@@ -315,7 +335,7 @@
 
     <div class="titre-section">
       <h2>Et si on respirait cet air… ?</h2>
-      <p>Trois façons de se représenter la quantité de particules fines, calculées sur la <b>moyenne de la période choisie</b>.</p>
+      <p>Une façon de se représenter la quantité de particules fines, calculée sur la <b>moyenne de la période choisie</b>.</p>
     </div>
     <div class="compare" id="comparaisons"></div>
     <p class="note" style="margin-top: 0">Ce sont des ordres de grandeur pour comprendre, pas un diagnostic médical. Le détail des calculs est dans l'onglet « Comprendre ».</p>
@@ -323,6 +343,43 @@
 
   <!-- ================= COURBES ================= -->
   <section id="onglet-courbes" role="tabpanel" hidden>
+    <div class="outils outils-courbes">
+      <div class="rang">
+        <b class="rang-titre">Période</b>
+        <label for="debut">Du</label>
+        <input type="datetime-local" id="debut">
+        <label for="fin">au</label>
+        <input type="datetime-local" id="fin">
+        <span class="presets">
+          <button class="bouton" type="button" data-duree="6">6 h</button>
+          <button class="bouton" type="button" data-duree="24">24 h</button>
+          <button class="bouton" type="button" data-duree="168">7 jours</button>
+        </span>
+      </div>
+      <div class="rang">
+        <b class="rang-titre">Points</b>
+        <label for="intervalle">Regrouper les mesures par</label>
+        <select id="intervalle">
+          <option value="" selected>Ne pas regrouper (mesures brutes)</option>
+          <option value="1m">1 minute</option>
+          <option value="5m">5 minutes</option>
+          <option value="15m">15 minutes</option>
+          <option value="30m">30 minutes</option>
+          <option value="1h">1 heure</option>
+        </select>
+      </div>
+      <div class="rang">
+        <b class="rang-titre">Axes</b>
+        <span class="axe"><span>Particules (µg/m³)</span> de <input type="number" step="any" id="ymin-pm" placeholder="auto" aria-label="Particules : minimum de l'axe"> à <input type="number" step="any" id="ymax-pm" placeholder="auto" aria-label="Particules : maximum de l'axe"></span>
+        <span class="axe"><span>Température (°C)</span> de <input type="number" step="any" id="ymin-temp" placeholder="auto" aria-label="Température : minimum de l'axe"> à <input type="number" step="any" id="ymax-temp" placeholder="auto" aria-label="Température : maximum de l'axe"></span>
+        <span class="axe"><span>Humidité (%)</span> de <input type="number" step="any" id="ymin-hum" placeholder="auto" aria-label="Humidité : minimum de l'axe"> à <input type="number" step="any" id="ymax-hum" placeholder="auto" aria-label="Humidité : maximum de l'axe"></span>
+        <button class="bouton" id="axes-auto" type="button">↺ Tout en auto</button>
+      </div>
+      <div class="rang">
+        <button class="bouton" id="csv2" type="button">⬇ Exporter en CSV</button>
+        <span id="etat2">Chargement…</span>
+      </div>
+    </div>
     <div class="carte">
       <div class="graphe-titre"><h2>Particules (µg/m³)</h2><span>Les lignes en pointillés sont les valeurs guides de l'OMS (clic sur la légende pour les masquer)</span></div>
       <div class="graphe"><canvas id="graphe-pm"></canvas></div>
@@ -337,6 +394,7 @@
     </div>
     <div class="carte">
       <h2>Statistiques sur la période</h2>
+      <p class="muted petit" id="stats-info"></p>
       <div class="stats-grille">
         <div class="anneau" id="anneau"><div><b id="anneau-pct">–</b>du temps sous la valeur guide OMS (PM2.5 ≤ 15)</div></div>
         <div class="table-scroll" id="stats"></div>
@@ -412,12 +470,8 @@
         <p>Les chercheurs de Berkeley Earth ont proposé une règle de pouce : respirer 22 µg/m³ de PM2.5 en moyenne équivaut, côté effets sur la santé, à fumer environ une cigarette par jour. Nous divisons la moyenne de la période par 22, puis multiplions par 365 pour l'année. Attention : cette règle est établie à partir de moyennes annuelles et reste une estimation très approximative. Elle sert surtout à se représenter l'impact. D'autres chercheurs rappellent que les particules d'origines différentes (diesel, industrie, tabac) ne sont pas toxiques de la même façon.</p>
       </details>
       <details>
-        <summary>Face à l'OMS</summary>
-        <p>C'est un simple rapport : moyenne de la période divisée par la valeur guide journalière de l'OMS pour les PM2.5 (15 µg/m³). Un résultat de 2 signifie deux fois la valeur recommandée.</p>
-      </details>
-      <details>
-        <summary>En temps de respiration</summary>
-        <p>On compare la quantité de particules inhalées, à rythme de respiration identique. Respirer pendant une journée un air à 30 µg/m³ fait inhaler autant de particules que respirer pendant 6 jours un air à 5 µg/m³ (la valeur guide annuelle de l'OMS). C'est de l'arithmétique sur la masse de particules : cela ne dit pas directement quel est l'effet sur la santé.</p>
+        <summary>Pourcentage de la valeur guide OMS</summary>
+        <p>C'est un simple rapport : valeur mesurée divisée par la valeur guide journalière de l'OMS (15 µg/m³ pour les PM2.5, 45 µg/m³ pour les PM10). 100 % correspond exactement à la valeur recommandée, 200 % à deux fois cette valeur.</p>
       </details>
     </div>
 
@@ -483,11 +537,11 @@ const MICROG_PAR_CIGARETTE = 22;
 
 // Échelle de niveaux (PM2.5), construite autour des valeurs guides de l'OMS
 const NIVEAUX = [
-  { max: 5,        nom: "Excellent", msg: "Air très pur : ouvrez grand les fenêtres !", plage: "≤ 5",    detail: "Sous la valeur guide annuelle de l'OMS" },
-  { max: 15,       nom: "Bon",       msg: "Sous la valeur guide de l'OMS : vous pouvez aérer tranquillement.", plage: "5 – 15", detail: "Sous la valeur guide journalière de l'OMS" },
-  { max: 25,       nom: "Moyen",     msg: "Au-dessus de la recommandation de l'OMS. Aérez brièvement, de préférence hors des heures de pointe.", plage: "15 – 25", detail: "Jusqu'à 1,7 fois la valeur guide journalière" },
+  { max: 5,        nom: "Excellent", msg: "Air très pur.", plage: "≤ 5",    detail: "Sous la valeur guide annuelle de l'OMS" },
+  { max: 15,       nom: "Bon",       msg: "Sous la valeur guide de l'OMS.", plage: "5 – 15", detail: "Sous la valeur guide journalière de l'OMS" },
+  { max: 25,       nom: "Moyen",     msg: "Au-dessus de la valeur guide journalière de l'OMS.", plage: "15 – 25", detail: "Jusqu'à 1,7 fois la valeur guide journalière" },
   { max: 50,       nom: "Dégradé",   msg: "Air chargé en particules : limitez les efforts intenses dehors, surtout si vous êtes sensible.", plage: "25 – 50", detail: "Jusqu'à 3,3 fois la valeur guide journalière" },
-  { max: Infinity, nom: "Mauvais",   msg: "Air très chargé : évitez les efforts dehors et aérez le moins possible.", plage: "> 50", detail: "Plus de 3,3 fois la valeur guide journalière" },
+  { max: Infinity, nom: "Mauvais",   msg: "Air très chargé : évitez les efforts intenses dehors.", plage: "> 50", detail: "Plus de 3,3 fois la valeur guide journalière" },
 ];
 
 // =====================================================================
@@ -508,8 +562,9 @@ const graphes = {};   // les graphes déjà dessinés, à remplacer au rechargem
 //  Données : serveur AirCarto
 // =====================================================================
 // Demande les mesures au serveur et renvoie la liste des points.
-async function chargerMesures(periode) {
-  const params = new URLSearchParams({ key: CLE, start: periode, freq: MOYENNE[periode] });
+async function chargerMesures(periode, freq) {
+  const params = new URLSearchParams({ key: CLE, start: periode });
+  if (freq) params.set("freq", freq);   // sans freq : mesures brutes, non moyennées
   if (DEVICE_ID) params.set("device_id", DEVICE_ID);
   const reponse = await fetch("https://api.aircarto.fr/iut-amu/data?" + params);
   const json = await reponse.json();
@@ -581,8 +636,8 @@ function rendreTuiles(points) {
       const [nom, unite, couleur] = CHAMPS[c];
       const v = derniere[c];
       let extra = "";
-      if (c === "pm25") extra = nfN(v / OMS.pm25_jour, 1) + " × la valeur guide OMS (24 h)";
-      else if (c === "pm10") extra = nfN(v / OMS.pm10_jour, 1) + " × la valeur guide OMS (24 h)";
+      if (c === "pm25") extra = nfN(v / OMS.pm25_jour * 100, 0) + "\u00a0% de la valeur guide OMS (24 h)";
+      else if (c === "pm10") extra = nfN(v / OMS.pm10_jour * 100, 0) + "\u00a0% de la valeur guide OMS (24 h)";
       else if (c === "pm1") extra = "Pas de valeur guide OMS";
       return `<div class="tuile"><div class="nom"><i style="background:${couleur}"></i>${nom}</div>` +
         `<div class="val">${nfN(v, c === "hum" ? 0 : 1)}<small>${unite}</small></div>` +
@@ -613,14 +668,6 @@ function rendreComparaisons(points) {
   const cigTexte = cig < 0.1 ? "moins de 0,1" : nfN(cig, cig < 10 ? 1 : 0);
   const anTexte = an < 10 ? "moins de 10" : nfN(an, 0);
 
-  // 2) face à l'OMS
-  const fois = moy / OMS.pm25_jour;
-  const max = Math.max(moy, OMS.pm25_jour) * 1.08;
-  const pct = v => Math.min(100, v / max * 100).toFixed(1) + "%";
-  const couleurMoy = "var(--l" + niveauDe(moy) + ")";
-
-  // 3) temps de respiration
-  const jours = moy / OMS.pm25_an;
 
   boite.innerHTML = `
     <div class="carte">
@@ -629,30 +676,14 @@ function rendreComparaisons(points) {
       <div class="cigs" aria-hidden="true">${cigarettes(cig)}</div>
       <p>Si l'air restait comme sur ces ${periode}, ce serait l'équivalent d'environ <b>${anTexte} cigarettes en un an</b>.</p>
       <p class="note">Règle de Berkeley Earth : 22 µg/m³ de PM2.5 ≈ 1 cigarette par jour.</p>
-    </div>
-    <div class="carte">
-      <span class="etiquette">Face à l'OMS</span>
-      <div class="gros">× ${nfN(fois, 1)} <small>la valeur guide</small></div>
-      <div class="barres" aria-hidden="true">
-        <div class="barre-ligne"><span>Cet air</span><div class="piste"><i style="width:${pct(moy)};background:${couleurMoy}"></i></div><b>${nfN(moy, 1)}</b></div>
-        <div class="barre-ligne"><span>OMS 24 h</span><div class="piste"><i style="width:${pct(OMS.pm25_jour)};background:var(--muted)"></i></div><b>${OMS.pm25_jour}</b></div>
-        <div class="barre-ligne"><span>OMS annuelle</span><div class="piste"><i style="width:${pct(OMS.pm25_an)};background:var(--muted)"></i></div><b>${OMS.pm25_an}</b></div>
-      </div>
-      <p class="note">PM2.5 moyens sur ${periode}, en µg/m³. Valeurs guides OMS 2021.</p>
-    </div>
-    <div class="carte">
-      <span class="etiquette">En temps de respiration</span>
-      <div class="gros">${nfN(jours, 1)} <small>${plur(jours, "jour")}</small></div>
-      <p>Respirer cet air <b>1 jour</b>, c'est inhaler autant de particules fines que respirer de l'air « aux normes OMS » (5 µg/m³) pendant ${nfN(jours, 1)} ${plur(jours, "jour")}.</p>
-      <p>Sur <b>1 an</b> : autant que ${nfN(jours, 1)} ${plur(jours, "an")} d'air à la valeur guide.</p>
-      <p class="note">Comparaison de quantité de particules inhalées, à rythme de respiration identique.</p>
     </div>`;
 }
 
 // =====================================================================
 //  Statistiques (onglet Courbes)
 // =====================================================================
-function rendreStats(points) {
+function rendreStats(points, info = "") {
+  $("stats-info").textContent = info;
   const lignes = Object.keys(CHAMPS).map(c => {
     const s = stats(points, c);
     if (!s) return "";
@@ -675,13 +706,17 @@ function rendreStats(points) {
 //  Graphes
 // =====================================================================
 // Dessine (ou redessine) un graphe avec une courbe par champ, plus d'éventuelles lignes de seuil.
-function dessiner(idCanvas, points, champs, seuils = []) {
+function dessiner(idCanvas, points, champs, seuils = [], etiquette = heure) {
   if (!window.Chart) return 0;
-  const etiquettes = points.map(p => heure(p.time));
+  const etiquettes = points.map(p => etiquette(p.time));
+  // On retient les courbes masquées via la légende pour ne pas les réafficher à chaque mise à jour.
+  const cache = {}, ancien = graphes[idCanvas];
+  if (ancien) ancien.data.datasets.forEach((d, i) => { cache[d.label] = !ancien.isDatasetVisible(i); });
+  const ax = axeDe(idCanvas);
   const jeux = champs
     .filter(c => points.some(p => p[c] !== undefined && p[c] !== null))   // seulement les champs mesurés
     .map(c => ({
-      label: CHAMPS[c][0], unite: CHAMPS[c][1],
+      label: CHAMPS[c][0], unite: CHAMPS[c][1], hidden: cache[CHAMPS[c][0]] ?? false,
       data: points.map(p => p[c] ?? null),                                // null = trou dans la courbe
       borderColor: CHAMPS[c][2], backgroundColor: CHAMPS[c][2] + "22",
       fill: champs.length === 1, tension: 0.3,
@@ -690,7 +725,7 @@ function dessiner(idCanvas, points, champs, seuils = []) {
   if (jeux.length) {
     seuils.forEach(s => jeux.push({
       label: s.label, seuil: true, data: points.map(() => s.valeur),
-      borderColor: s.couleur, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, hidden: !!s.cache, fill: false,
+      borderColor: s.couleur, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, hidden: cache[s.label] ?? !!s.cache, fill: false,
     }));
   }
   const texte = css("--muted"), grille = css("--line");
@@ -699,13 +734,13 @@ function dessiner(idCanvas, points, champs, seuils = []) {
     type: "line",
     data: { labels: etiquettes, datasets: jeux },
     options: {
-      responsive: true, maintainAspectRatio: false,
+      responsive: true, maintainAspectRatio: false, animation: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { labels: { usePointStyle: true, boxWidth: 8, color: texte } },
         tooltip: {
           filter: i => !i.dataset.seuil && i.parsed.y !== null,
-          callbacks: { label: c => ` ${c.dataset.label} : ${nfN(c.parsed.y, 1)} ${c.dataset.unite}` },
+          callbacks: { title: i => dateComplete.format(new Date(points[i[0].dataIndex].time)), label: c => ` ${c.dataset.label} : ${nfN(c.parsed.y, 1)} ${c.dataset.unite}` },
         },
       },
       scales: {
