@@ -31,11 +31,8 @@
     --bg: #f2f6f3; --surface: #ffffff; --surface2: #e8efea;
     --text: #14211b; --muted: #53675c; --line: #d6e1da;
     --accent: #0f766e; --accent-soft: #d5efe9;
-    /* couleurs de niveau pour les textes et pastilles (adaptées au thème) */
     --l0: #0b8f8d; --l1: #1f9d55; --l2: #b97f00; --l3: #d4570a; --l4: #c42a3f;
-    /* couleurs de l'en-tête vedette : toujours assez sombres pour du texte blanc */
     --h0: #0a6f6d; --h1: #17803f; --h2: #9a6300; --h3: #b8480a; --h4: #a31f33;
-    /* couleurs vives de la jauge */
     --g0: #2dd4bf; --g1: #4ade80; --g2: #fbbf24; --g3: #fb923c; --g4: #f87171;
     --radius: 18px;
     --shadow: 0 1px 2px rgba(20,33,27,.06), 0 10px 30px rgba(20,33,27,.07);
@@ -114,10 +111,6 @@
   .bouton:hover, select:hover { border-color: var(--accent); }
   #etat { color: var(--muted); font-size: .88rem; margin-left: auto; }
   #etat.erreur { color: var(--l4); font-weight: 600; }
-  .badge-demo {
-    background: var(--accent-soft); color: var(--accent); border-radius: 99px;
-    font-size: .78rem; font-weight: 700; padding: 4px 10px;
-  }
 
   /* ---------- Carte générique ---------- */
   .carte {
@@ -287,14 +280,6 @@
       <option value="-24h" selected>24 dernières heures</option>
       <option value="-7d">7 derniers jours</option>
     </select>
-    <span id="bloc-demo" hidden>
-      <span class="badge-demo">Mode démo · données simulées</span>
-      <select id="scenario" aria-label="Scénario de démonstration" title="Scénario de démonstration">
-        <option value="normal">Journée normale</option>
-        <option value="pur">Air très pur</option>
-        <option value="pic">Épisode de pollution</option>
-      </select>
-    </span>
     <button class="bouton" id="csv" type="button">⬇ Exporter en CSV</button>
     <span id="etat">Chargement…</span>
   </div>
@@ -455,9 +440,8 @@
 // =====================================================================
 //  RÉGLAGES : à remplacer
 // =====================================================================
-const CLE = "";        // clé du groupe (32 caractères). Laisser vide = MODE DÉMO (données simulées)
-const DEVICE_ID = "e81e6a27239bf334796bbbc4a9b1989a";  // adresse MAC d'une carte, ou "" pour toutes
-const MODE_DEMO = (CLE === "");
+const CLE = "e81e6a27239bf334796bbbc4a9b1989a";        // clé du groupe (32 caractères) : à coller ici, entre les guillemets
+const DEVICE_ID = "";  // adresse MAC d'une carte, ou "" pour toutes
 
 // Tout ce qui s'affiche dans l'onglet « Le projet » se règle ici.
 const PROJET = {
@@ -482,8 +466,6 @@ const PROJET = {
 // Une moyenne par intervalle selon la période : assez de points pour une
 // courbe lisible, pas trop pour rester rapide (7 jours en brut = 60 000 points).
 const MOYENNE = { "-6h": "5m", "-24h": "15m", "-7d": "1h" };
-const PAS_MIN = { "-6h": 5, "-24h": 15, "-7d": 60 };       // même chose en minutes (démo)
-const NB_POINTS = { "-6h": 72, "-24h": 96, "-7d": 168 };   // nombre de points (démo)
 const LIBELLE_PERIODE = { "-6h": "6 h", "-24h": "24 h", "-7d": "7 jours" };
 
 // Nom affiché, unité et couleur de chaque champ de l'API
@@ -523,8 +505,9 @@ const donnees = { points: [], periode: "-24h" };
 const graphes = {};   // les graphes déjà dessinés, à remplacer au rechargement
 
 // =====================================================================
-//  Données : serveur réel ou simulation
+//  Données : serveur AirCarto
 // =====================================================================
+// Demande les mesures au serveur et renvoie la liste des points.
 async function chargerMesures(periode) {
   const params = new URLSearchParams({ key: CLE, start: periode, freq: MOYENNE[periode] });
   if (DEVICE_ID) params.set("device_id", DEVICE_ID);
@@ -535,45 +518,6 @@ async function chargerMesures(periode) {
     throw new Error(json.message);
   }
   return json.points;
-}
-
-// Générateur pseudo-aléatoire : même instant = mêmes valeurs, donc la démo ne « saute » pas.
-function mulberry32(a) {
-  return function () {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-
-// Fausses mesures réalistes : pics aux heures de trafic, cycle jour/nuit, épisodes lents.
-function genererDemo(periode, scenario) {
-  const n = NB_POINTS[periode], msPas = PAS_MIN[periode] * 60000;
-  const fin = Math.floor(Date.now() / msPas) * msPas;
-  const sc = { normal: { k: 1, o: 0 }, pur: { k: 0.3, o: 0 }, pic: { k: 2.4, o: 16 } }[scenario] || { k: 1, o: 0 };
-  const gauss = (h, c, l) => Math.exp(-Math.pow((h - c) / l, 2) / 2);
-  const r1 = x => Math.round(x * 10) / 10;
-  const pts = [];
-  for (let i = 0; i < n; i++) {
-    const t = fin - (n - 1 - i) * msPas, d = new Date(t);
-    const h = d.getHours() + d.getMinutes() / 60;
-    const rnd = mulberry32(Math.floor(t / 60000));
-    const jours = t / 86400000;
-    const episode = 0.5 + 0.5 * Math.sin(jours * 1.1);
-    const trafic = 7 * gauss(h, 8.3, 1.4) + 9 * gauss(h, 18.7, 1.9);
-    const pm25 = Math.max(0.8, (5 + 9 * episode + trafic) * sc.k + sc.o + (rnd() - 0.5) * 2.2);
-    const cycle = Math.sin((h - 9) / 24 * 2 * Math.PI);
-    pts.push({
-      time: new Date(t).toISOString(),
-      pm1: r1(Math.max(0.3, pm25 * 0.66 + (rnd() - 0.5))),
-      pm25: r1(pm25),
-      pm10: r1(pm25 * 1.55 + 2 + (rnd() - 0.5) * 2),
-      temp: r1(14 + 5 * cycle + 1.5 * Math.sin(jours * 0.8) + (rnd() - 0.5) * 0.4),
-      hum: r1(Math.min(98, Math.max(25, 66 - 13 * cycle + (rnd() - 0.5) * 2))),
-    });
-  }
-  return pts;
 }
 
 // =====================================================================
@@ -611,7 +555,7 @@ function rendreHero(points) {
   $("hero-niveau").textContent = NIVEAUX[i].nom;
   $("hero-msg").textContent = NIVEAUX[i].msg;
   $("jauge-curseur").style.left = Math.min(pm / 60, 1) * 100 + "%";
-  $("hero-maj").textContent = "Mesure du " + new Date(derniere.time).toLocaleString("fr-FR") + (MODE_DEMO ? " (simulée)" : "");
+  $("hero-maj").textContent = "Mesure du " + new Date(derniere.time).toLocaleString("fr-FR");
   majParticules(pm);
 }
 
@@ -841,7 +785,7 @@ function animInit() {
 }
 
 // =====================================================================
-//  Onglet « Le projet » et « Comprendre »
+//  Onglets « Le projet » et « Comprendre »
 // =====================================================================
 function rendreProjet() {
   $("nom-projet").textContent = PROJET.nom;
@@ -928,10 +872,10 @@ $("csv").addEventListener("click", () => {
   const cols = ["pm1", "pm25", "pm10", "temp", "hum"];
   const lignes = [["date", ...cols].join(";")];
   pts.forEach(p => lignes.push([p.time, ...cols.map(c => typeof p[c] === "number" ? String(p[c]).replace(".", ",") : "")].join(";")));
-  const blob = new Blob(["﻿" + lignes.join("\n")], { type: "text/csv;charset=utf-8" });
+  const blob = new Blob(["\uFEFF" + lignes.join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
-  a.download = MODE_DEMO ? "mesures-demo.csv" : "mesures-capteur.csv";
+  a.download = "mesures-capteur.csv";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 });
@@ -939,8 +883,13 @@ $("csv").addEventListener("click", () => {
 async function rafraichir() {
   const etat = $("etat");
   const periode = $("periode").value;
+  if (CLE === "") {
+    etat.className = "erreur";
+    etat.textContent = "Clé manquante : collez la clé du groupe dans la constante CLE au début du script.";
+    return;
+  }
   try {
-    const points = MODE_DEMO ? genererDemo(periode, $("scenario").value) : await chargerMesures(periode);
+    const points = await chargerMesures(periode);
     if (points.length === 0) {
       etat.className = "";
       etat.textContent = "Aucune mesure sur cette période : la carte envoie-t-elle ?";
@@ -958,7 +907,7 @@ async function rafraichir() {
     const age = (Date.now() - derniere) / 60000;
     etat.className = "";
     etat.textContent = `${points.length} points, moyenne sur ${MOYENNE[periode]}. Dernière mesure : ${derniere.toLocaleString("fr-FR")}.`;
-    if (!MODE_DEMO && age > 90) {
+    if (age > 90) {
       etat.className = "erreur";
       etat.textContent += ` Attention : plus de ${Math.round(age / 60)} h sans mesure, la carte envoie-t-elle ?`;
     }
@@ -971,11 +920,9 @@ async function rafraichir() {
 // ---------- Démarrage ----------
 rendreProjet();
 majBoutonTheme();
-$("bloc-demo").hidden = !MODE_DEMO;
 animInit();
 afficherOnglet(location.hash.slice(1) || "aujourdhui", false);
 $("periode").addEventListener("change", rafraichir);
-$("scenario").addEventListener("change", rafraichir);
 rafraichir();
 setInterval(rafraichir, 1 * 60 * 1000);   // mise à jour toutes les minutes
 </script>
