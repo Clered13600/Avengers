@@ -3,76 +3,528 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Notre capteur</title>
-<!-- Chart.js : la bibliothèque qui dessine les graphes, chargée depuis un CDN -->
+<title>Notre capteur · Qualité de l'air</title>
+<meta name="description" content="Qualité de l'air en direct : particules fines, température et humidité.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='9' cy='20' r='5' fill='%230f766e'/%3E%3Ccircle cx='19' cy='12' r='3.2' fill='%230f766e'/%3E%3Ccircle cx='25' cy='21' r='2' fill='%230f766e'/%3E%3Ccircle cx='14' cy='6' r='1.5' fill='%230f766e'/%3E%3C/svg%3E">
+
+<script>
+// Applique le thème (clair/sombre) avant l'affichage pour éviter un flash.
+(function () {
+  var t = null;
+  try { t = localStorage.getItem("theme"); } catch (e) {}
+  if (!t) t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  document.documentElement.dataset.theme = t;
+})();
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Leaflet : la carte de l'onglet « Le projet » -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<!-- Chart.js : la bibliothèque qui dessine les graphes -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
+  :root {
+    --bg: #f2f6f3; --surface: #ffffff; --surface2: #e8efea;
+    --text: #14211b; --muted: #53675c; --line: #d6e1da;
+    --accent: #0f766e; --accent-soft: #d5efe9;
+    /* couleurs de niveau pour les textes et pastilles (adaptées au thème) */
+    --l0: #0b8f8d; --l1: #1f9d55; --l2: #b97f00; --l3: #d4570a; --l4: #c42a3f;
+    /* couleurs de l'en-tête vedette : toujours assez sombres pour du texte blanc */
+    --h0: #0a6f6d; --h1: #17803f; --h2: #9a6300; --h3: #b8480a; --h4: #a31f33;
+    /* couleurs vives de la jauge */
+    --g0: #2dd4bf; --g1: #4ade80; --g2: #fbbf24; --g3: #fb923c; --g4: #f87171;
+    --radius: 18px;
+    --shadow: 0 1px 2px rgba(20,33,27,.06), 0 10px 30px rgba(20,33,27,.07);
+    --font-titre: "Bricolage Grotesque", system-ui, sans-serif;
+    --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  [data-theme="dark"] {
+    --bg: #0b1411; --surface: #12201b; --surface2: #1a2c25;
+    --text: #e7f1ec; --muted: #9db4a8; --line: #25382f;
+    --accent: #2dd4bf; --accent-soft: #12332d;
+    --l0: #2dd4bf; --l1: #4ade80; --l2: #fbbf24; --l3: #fb923c; --l4: #f87171;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
   body {
-    font-family: system-ui, sans-serif; color: #1b2420; background: #f6f7f6;
-    max-width: 900px; margin: 0 auto; padding: 16px;
+    margin: 0; font-family: var(--font); color: var(--text); line-height: 1.55;
+    background: var(--bg);
+    background-image: radial-gradient(900px 400px at 85% -10%, var(--accent-soft), transparent 70%);
+    background-repeat: no-repeat;
   }
-  h1 { margin-bottom: 4px; }
+  h1, h2, h3 { font-family: var(--font-titre); line-height: 1.15; margin: 0; }
+  h2 { font-size: 1.35rem; margin-bottom: 12px; }
+  h3 { font-size: 1.05rem; }
+  p { margin: 0 0 10px; }
+  a { color: var(--accent); }
+  .muted { color: var(--muted); }
+  .petit { font-size: .85rem; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  /* ---------- En-tête et onglets ---------- */
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(12px); border-bottom: 1px solid var(--line);
+  }
+  .barre {
+    max-width: 1080px; margin: 0 auto; padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  }
+  .marque { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); margin-right: auto; }
+  .marque svg { width: 30px; height: 30px; fill: var(--accent); }
+  .marque b { font-family: var(--font-titre); font-size: 1.2rem; display: block; line-height: 1.1; }
+  .marque small { color: var(--muted); font-size: .78rem; display: block; }
+  .onglets {
+    display: flex; gap: 4px; padding: 4px; background: var(--surface2);
+    border-radius: 99px; overflow-x: auto; max-width: 100%;
+  }
+  .onglets button {
+    border: 0; background: transparent; color: var(--muted); font: inherit; font-weight: 600;
+    font-size: .92rem; padding: 7px 15px; border-radius: 99px; cursor: pointer; white-space: nowrap;
+  }
+  .onglets button[aria-selected="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
+  #theme {
+    border: 1px solid var(--line); background: var(--surface); color: var(--text);
+    width: 38px; height: 38px; border-radius: 50%; cursor: pointer; font-size: 1.05rem;
+  }
+  @media (max-width: 720px) { .onglets { order: 3; width: 100%; } }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }
+  section[role="tabpanel"] > * + * { margin-top: 18px; }
+
+  /* ---------- Barre d'outils ---------- */
+  .outils {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+    padding: 10px 14px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; margin-bottom: 18px;
+  }
+  .outils label { font-weight: 600; font-size: .9rem; }
+  select, .bouton {
+    font: inherit; font-size: .92rem; color: var(--text); background: var(--surface2);
+    border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; cursor: pointer;
+  }
+  .bouton:hover, select:hover { border-color: var(--accent); }
+  #etat { color: var(--muted); font-size: .88rem; margin-left: auto; }
+  #etat.erreur { color: var(--l4); font-weight: 600; }
+  .badge-demo {
+    background: var(--accent-soft); color: var(--accent); border-radius: 99px;
+    font-size: .78rem; font-weight: 700; padding: 4px 10px;
+  }
+
+  /* ---------- Carte générique ---------- */
   .carte {
-    background: #fff; border: 1px solid #d6ddd8; border-radius: 8px;
-    padding: 12px 16px; margin: 16px 0;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); padding: 18px 20px; box-shadow: var(--shadow);
   }
-  #valeurs { display: flex; flex-wrap: wrap; gap: 24px; }
-  .valeur b { display: block; font-size: 1.8rem; }
-  #etat { color: #5a6a60; }
-  #etat.erreur { color: #b3261e; }
+
+  /* ---------- Bandeau vedette ---------- */
+  .hero {
+    position: relative; overflow: hidden; color: #fff; border-radius: 26px; padding: 28px 28px 22px;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--hero) 78%, #000), var(--hero));
+    box-shadow: var(--shadow); transition: background .6s;
+  }
+  .hero canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  .hero-in { position: relative; display: grid; grid-template-columns: minmax(220px, 1fr) 1.3fr; gap: 24px 40px; align-items: center; }
+  @media (max-width: 760px) { .hero-in { grid-template-columns: 1fr; } .hero { padding: 22px 18px 18px; } }
+  .surtitre { font-size: .8rem; text-transform: uppercase; letter-spacing: .09em; opacity: .85; margin-bottom: 0; }
+  .hero-chiffre { font-family: var(--font-titre); font-weight: 800; font-size: clamp(3.6rem, 11vw, 6.6rem); line-height: 1; margin: 6px 0 4px; }
+  .hero-chiffre small { font-size: 1.1rem; font-weight: 600; margin-left: 8px; opacity: .85; font-family: var(--font); }
+  .hero-niveau {
+    display: inline-block; background: rgba(255,255,255,.2); border: 1px solid rgba(255,255,255,.35);
+    border-radius: 99px; padding: 4px 16px; font-weight: 700; font-size: 1.05rem; margin: 0;
+  }
+  .hero-msg { font-size: 1.2rem; font-weight: 500; line-height: 1.4; margin-bottom: 0; }
+  .hero-maj { font-size: .82rem; opacity: .85; margin: 8px 0 0; }
+  .jauge { position: relative; margin-top: 24px; padding-bottom: 24px; }
+  .jauge-barre { display: flex; height: 10px; border-radius: 99px; overflow: hidden; }
+  .jauge-barre span { border-right: 2px solid var(--hero); }
+  .jauge-barre span:last-child { border-right: 0; }
+  .jauge-barre span:nth-child(1) { background: var(--g0); }
+  .jauge-barre span:nth-child(2) { background: var(--g1); }
+  .jauge-barre span:nth-child(3) { background: var(--g2); }
+  .jauge-barre span:nth-child(4) { background: var(--g3); }
+  .jauge-barre span:nth-child(5) { background: var(--g4); }
+  .jauge-curseur {
+    position: absolute; top: -4px; left: 0; width: 18px; height: 18px; margin-left: -9px;
+    border-radius: 50%; background: #fff; border: 3px solid var(--hero);
+    box-shadow: 0 2px 8px rgba(0,0,0,.4); transition: left .9s cubic-bezier(.2,.8,.2,1);
+  }
+  .jauge-reperes span { position: absolute; top: 18px; transform: translateX(-50%); font-size: .72rem; opacity: .92; white-space: nowrap; }
+
+  /* ---------- Tuiles de mesures ---------- */
+  .tuiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 12px; }
+  .tuile { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px 10px; box-shadow: var(--shadow); }
+  .tuile .nom { font-size: .82rem; font-weight: 600; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .tuile .nom i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .tuile .val { font-family: var(--font-titre); font-weight: 800; font-size: 1.9rem; line-height: 1.2; }
+  .tuile .val small { font-size: .85rem; font-weight: 600; color: var(--muted); margin-left: 4px; font-family: var(--font); }
+  .tuile .extra { font-size: .78rem; color: var(--muted); min-height: 1.2em; }
+  .spark { width: 100%; height: 28px; display: block; margin-top: 6px; }
+
+  /* ---------- Comparaisons ---------- */
+  .titre-section p { margin: 0; color: var(--muted); }
+  .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
+  .compare .carte { display: flex; flex-direction: column; gap: 8px; }
+  .compare .etiquette { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+  .gros { font-family: var(--font-titre); font-weight: 800; font-size: 2.3rem; line-height: 1.1; }
+  .gros small { font-size: 1rem; font-weight: 600; color: var(--muted); font-family: var(--font); }
+  .cigs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 16px; }
+  .cig { position: relative; width: 58px; height: 10px; border-radius: 3px; border: 1px solid var(--muted); overflow: hidden; }
+  .cig i { position: absolute; inset: 0 auto 0 0; width: calc(var(--f) * 100%); background: linear-gradient(90deg, #cfc7b8, #f3eee3); }
+  .cig::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 20%; background: #e8a35c; opacity: .75; }
+  .cigs .plus { font-weight: 700; color: var(--muted); font-size: .9rem; }
+  .barres { display: grid; gap: 7px; margin: 4px 0; }
+  .barre-ligne { display: grid; grid-template-columns: 82px 1fr 44px; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); }
+  .barre-ligne .piste { height: 12px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+  .barre-ligne .piste i { display: block; height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.2,.8,.2,1); }
+  .barre-ligne b { color: var(--text); text-align: right; }
+  .note { font-size: .8rem; color: var(--muted); margin-top: auto; }
+
+  /* ---------- Graphes ---------- */
+  .graphe { height: 300px; position: relative; }
+  .graphe-titre { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; }
+  .graphe-titre span { color: var(--muted); font-size: .84rem; }
+
+  /* ---------- Statistiques ---------- */
+  .stats-grille { display: grid; grid-template-columns: 190px 1fr; gap: 20px 28px; align-items: center; }
+  @media (max-width: 720px) { .stats-grille { grid-template-columns: 1fr; justify-items: center; } .stats-grille .table-scroll { justify-self: stretch; } }
+  .anneau {
+    --p: 0; width: 160px; height: 160px; border-radius: 50%; display: grid; place-items: center; position: relative;
+    background: conic-gradient(var(--l1) calc(var(--p) * 1%), var(--surface2) 0);
+  }
+  .anneau::before { content: ""; position: absolute; inset: 14px; background: var(--surface); border-radius: 50%; }
+  .anneau div { position: relative; text-align: center; font-size: .72rem; color: var(--muted); line-height: 1.25; padding: 0 22px; }
+  .anneau b { display: block; font-family: var(--font-titre); font-size: 1.9rem; color: var(--text); }
+  .table-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: right; padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--muted); font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; }
+  tbody th { font-weight: 600; }
+
+  /* ---------- Projet ---------- */
+  .flux { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 12px; align-items: center; }
+  .flux-etape { background: var(--surface2); border-radius: 14px; padding: 14px; text-align: center; }
+  .flux-etape b { display: block; font-family: var(--font-titre); font-size: 1.05rem; }
+  .flux-etape span { font-size: .84rem; color: var(--muted); }
+  .flux-fleche { font-size: 1.6rem; color: var(--accent); }
+  @media (max-width: 640px) { .flux { grid-template-columns: 1fr; } .flux-fleche { transform: rotate(90deg); text-align: center; } }
+  .frise { list-style: none; margin: 0; padding: 0 0 0 26px; border-left: 3px solid var(--accent-soft); }
+  .frise li { position: relative; padding: 0 0 20px 8px; }
+  .frise li:last-child { padding-bottom: 0; }
+  .frise li::before {
+    content: ""; position: absolute; left: -36px; top: 4px; width: 14px; height: 14px;
+    border-radius: 50%; background: var(--accent); border: 3px solid var(--surface); box-shadow: 0 0 0 2px var(--accent);
+  }
+  .frise .date { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); }
+  .frise p { margin: 2px 0 0; color: var(--muted); }
+  #carte-lieu { height: 320px; border-radius: 14px; overflow: hidden; z-index: 0; }
+  [data-theme="dark"] .leaflet-tile { filter: invert(1) hue-rotate(180deg) brightness(.95) contrast(.9); }
+  .equipe { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .membre { display: flex; align-items: center; gap: 12px; background: var(--surface2); border-radius: 14px; padding: 12px; }
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: var(--accent); color: var(--bg); font-weight: 800; font-family: var(--font-titre);
+  }
+  .membre b { display: block; line-height: 1.2; }
+  .membre span { font-size: .84rem; color: var(--muted); }
+
+  /* ---------- Comprendre ---------- */
+  .tailles { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 28px; padding: 8px 0 4px; }
+  .taille { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; font-size: .85rem; }
+  .taille .rond { width: var(--d); height: var(--d); border-radius: 50%; background: var(--accent); opacity: .9; display: block; }
+  .taille .cheveu { background: var(--surface2); border: 2px solid var(--muted); }
+  .taille small { color: var(--muted); }
+  .legende-niveaux { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .legende-niveaux li { display: grid; grid-template-columns: 14px 90px 90px 1fr; gap: 10px; align-items: baseline; font-size: .92rem; }
+  .legende-niveaux i { width: 14px; height: 14px; border-radius: 50%; align-self: center; }
+  @media (max-width: 640px) { .legende-niveaux li { grid-template-columns: 14px 80px 80px; } .legende-niveaux li span:last-child { display: none; } }
+  details { border-top: 1px solid var(--line); padding-top: 10px; margin-top: 10px; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { margin-top: 8px; color: var(--muted); }
+  ul.sources { margin: 0; padding-left: 20px; }
+
+  footer { max-width: 1080px; margin: 0 auto; padding: 0 16px 36px; color: var(--muted); font-size: .84rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; scroll-behavior: auto !important; }
+  }
 </style>
 </head>
 <body>
 
-<h1>Notre capteur</h1>
-<p>Mesures envoyées par la carte du groupe au serveur AirCarto.</p>
+<header>
+  <div class="barre">
+    <a class="marque" href="#aujourdhui" aria-label="Accueil">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="9" cy="20" r="5"/><circle cx="19" cy="12" r="3.2"/><circle cx="25" cy="21" r="2"/><circle cx="14" cy="6" r="1.5"/></svg>
+      <span><b id="nom-projet">Notre capteur</b><small id="slogan"></small></span>
+    </a>
+    <nav class="onglets" role="tablist" aria-label="Sections">
+      <button role="tab" data-onglet="aujourdhui" aria-selected="true">Aujourd'hui</button>
+      <button role="tab" data-onglet="courbes" aria-selected="false">Courbes</button>
+      <button role="tab" data-onglet="projet" aria-selected="false">Le projet</button>
+      <button role="tab" data-onglet="comprendre" aria-selected="false">Comprendre</button>
+    </nav>
+    <button id="theme" aria-label="Changer de thème" title="Thème clair / sombre">🌙</button>
+  </div>
+</header>
 
-<p>
-  Période :
-  <select id="periode">
-    <option value="-6h">6 dernières heures</option>
-    <option value="-24h" selected>24 dernières heures</option>
-    <option value="-7d">7 derniers jours</option>
-  </select>
-</p>
-<p id="etat">Chargement…</p>
+<main>
 
-<div class="carte">
-  <h2>Dernière mesure</h2>
-  <div id="valeurs"></div>
-</div>
+  <!-- Barre d'outils : visible sur « Aujourd'hui » et « Courbes » -->
+  <div class="outils" id="outils">
+    <label for="periode">Période</label>
+    <select id="periode">
+      <option value="-6h">6 dernières heures</option>
+      <option value="-24h" selected>24 dernières heures</option>
+      <option value="-7d">7 derniers jours</option>
+    </select>
+    <span id="bloc-demo" hidden>
+      <span class="badge-demo">Mode démo · données simulées</span>
+      <select id="scenario" aria-label="Scénario de démonstration" title="Scénario de démonstration">
+        <option value="normal">Journée normale</option>
+        <option value="pur">Air très pur</option>
+        <option value="pic">Épisode de pollution</option>
+      </select>
+    </span>
+    <button class="bouton" id="csv" type="button">⬇ Exporter en CSV</button>
+    <span id="etat">Chargement…</span>
+  </div>
 
-<div class="carte">
-  <h2>Particules (µg/m³)</h2>
-  <canvas id="graphe-pm"></canvas>
-</div>
-<div class="carte">
-  <h2>Température (°C)</h2>
-  <canvas id="graphe-temp"></canvas>
-</div>
-<div class="carte">
-  <h2>Humidité (%)</h2>
-  <canvas id="graphe-hum"></canvas>
-</div>
+  <!-- ================= AUJOURD'HUI ================= -->
+  <section id="onglet-aujourdhui" role="tabpanel">
+    <div class="hero" id="hero" style="--hero: var(--h1)">
+      <canvas id="particules" aria-hidden="true"></canvas>
+      <div class="hero-in">
+        <div>
+          <p class="surtitre">Particules fines PM2.5 · dernière mesure</p>
+          <p class="hero-chiffre"><span id="hero-valeur">…</span><small>µg/m³</small></p>
+          <p class="hero-niveau" aria-live="polite" id="hero-niveau">Chargement</p>
+        </div>
+        <div>
+          <p class="hero-msg" id="hero-msg"></p>
+          <div class="jauge" aria-hidden="true">
+            <div class="jauge-barre">
+              <span style="flex: 5"></span><span style="flex: 10"></span><span style="flex: 10"></span><span style="flex: 25"></span><span style="flex: 10"></span>
+            </div>
+            <div class="jauge-curseur" id="jauge-curseur"></div>
+            <div class="jauge-reperes">
+              <span style="left: 8.33%">OMS annuelle · 5</span>
+              <span style="left: 25%; margin-left: 28px">OMS 24 h · 15</span>
+            </div>
+          </div>
+          <p class="hero-maj" id="hero-maj"></p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tuiles" id="tuiles"></div>
+
+    <div class="titre-section">
+      <h2>Et si on respirait cet air… ?</h2>
+      <p>Trois façons de se représenter la quantité de particules fines, calculées sur la <b>moyenne de la période choisie</b>.</p>
+    </div>
+    <div class="compare" id="comparaisons"></div>
+    <p class="note" style="margin-top: 0">Ce sont des ordres de grandeur pour comprendre, pas un diagnostic médical. Le détail des calculs est dans l'onglet « Comprendre ».</p>
+  </section>
+
+  <!-- ================= COURBES ================= -->
+  <section id="onglet-courbes" role="tabpanel" hidden>
+    <div class="carte">
+      <div class="graphe-titre"><h2>Particules (µg/m³)</h2><span>Les lignes en pointillés sont les valeurs guides de l'OMS (clic sur la légende pour les masquer)</span></div>
+      <div class="graphe"><canvas id="graphe-pm"></canvas></div>
+    </div>
+    <div class="carte">
+      <h2>Température (°C)</h2>
+      <div class="graphe"><canvas id="graphe-temp"></canvas></div>
+    </div>
+    <div class="carte">
+      <h2>Humidité (%)</h2>
+      <div class="graphe"><canvas id="graphe-hum"></canvas></div>
+    </div>
+    <div class="carte">
+      <h2>Statistiques sur la période</h2>
+      <div class="stats-grille">
+        <div class="anneau" id="anneau"><div><b id="anneau-pct">–</b>du temps sous la valeur guide OMS (PM2.5 ≤ 15)</div></div>
+        <div class="table-scroll" id="stats"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= LE PROJET ================= -->
+  <section id="onglet-projet" role="tabpanel" hidden>
+    <div class="carte">
+      <h2>Comment ça marche</h2>
+      <div class="flux">
+        <div class="flux-etape"><b>La carte</b><span>Capteur de particules, de température et d'humidité</span></div>
+        <div class="flux-fleche" aria-hidden="true">→</div>
+        <div class="flux-etape"><b>Le serveur AirCarto</b><span>Reçoit et stocke les mesures</span></div>
+        <div class="flux-fleche" aria-hidden="true">→</div>
+        <div class="flux-etape"><b>Cette page</b><span>Dessine les courbes et calcule les comparaisons</span></div>
+      </div>
+    </div>
+    <div class="carte">
+      <h2>Notre histoire</h2>
+      <ol class="frise" id="frise"></ol>
+    </div>
+    <div class="carte">
+      <h2>Où est le capteur ?</h2>
+      <p class="muted" id="lieu"></p>
+      <div id="carte-lieu"></div>
+    </div>
+    <div class="carte">
+      <h2>L'équipe</h2>
+      <div class="equipe" id="equipe"></div>
+    </div>
+  </section>
+
+  <!-- ================= COMPRENDRE ================= -->
+  <section id="onglet-comprendre" role="tabpanel" hidden>
+    <div class="carte">
+      <h2>PM1, PM2.5, PM10 : c'est quoi ?</h2>
+      <p>Ce sont des particules en suspension dans l'air. Le chiffre indique leur diamètre maximal, en micromètres (µm). Plus elles sont petites, plus elles pénètrent profondément dans les voies respiratoires.</p>
+      <div class="tailles" aria-label="Tailles comparées, à l'échelle">
+        <div class="taille"><span class="rond cheveu" style="--d: 140px"></span><b>Un cheveu</b><small>≈ 70 µm d'épaisseur</small></div>
+        <div class="taille"><span class="rond" style="--d: 20px"></span><b>PM10</b><small>≤ 10 µm</small></div>
+        <div class="taille"><span class="rond" style="--d: 5px"></span><b>PM2.5</b><small>≤ 2,5 µm</small></div>
+        <div class="taille"><span class="rond" style="--d: 2px"></span><b>PM1</b><small>≤ 1 µm</small></div>
+      </div>
+      <p class="petit muted">Dessin à l'échelle (1 µm = 2 pixels) : une particule PM2.5 est environ 30 fois plus fine qu'un cheveu.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Les repères de l'OMS</h2>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Particules</th><th>Moyenne annuelle</th><th>Moyenne sur 24 h</th></tr></thead>
+          <tbody>
+            <tr><th>PM2.5</th><td>5 µg/m³</td><td>15 µg/m³</td></tr>
+            <tr><th>PM10</th><td>15 µg/m³</td><td>45 µg/m³</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="petit muted" style="margin-top: 10px">Valeurs guides 2021 de l'Organisation mondiale de la santé. Il n'existe pas de valeur guide pour les PM1.</p>
+    </div>
+
+    <div class="carte">
+      <h2>Notre échelle de couleurs</h2>
+      <p>Pour savoir en un coup d'œil où l'on en est, nous avons construit une échelle simple autour des deux valeurs guides de l'OMS pour les PM2.5. <b>Ce n'est pas l'indice officiel de la qualité de l'air</b> (indice ATMO).</p>
+      <ul class="legende-niveaux" id="legende-niveaux"></ul>
+    </div>
+
+    <div class="carte">
+      <h2>Comment sont calculées les comparaisons ?</h2>
+      <details open>
+        <summary>En cigarettes</summary>
+        <p>Les chercheurs de Berkeley Earth ont proposé une règle de pouce : respirer 22 µg/m³ de PM2.5 en moyenne équivaut, côté effets sur la santé, à fumer environ une cigarette par jour. Nous divisons la moyenne de la période par 22, puis multiplions par 365 pour l'année. Attention : cette règle est établie à partir de moyennes annuelles et reste une estimation très approximative. Elle sert surtout à se représenter l'impact. D'autres chercheurs rappellent que les particules d'origines différentes (diesel, industrie, tabac) ne sont pas toxiques de la même façon.</p>
+      </details>
+      <details>
+        <summary>Face à l'OMS</summary>
+        <p>C'est un simple rapport : moyenne de la période divisée par la valeur guide journalière de l'OMS pour les PM2.5 (15 µg/m³). Un résultat de 2 signifie deux fois la valeur recommandée.</p>
+      </details>
+      <details>
+        <summary>En temps de respiration</summary>
+        <p>On compare la quantité de particules inhalées, à rythme de respiration identique. Respirer pendant une journée un air à 30 µg/m³ fait inhaler autant de particules que respirer pendant 6 jours un air à 5 µg/m³ (la valeur guide annuelle de l'OMS). C'est de l'arithmétique sur la masse de particules : cela ne dit pas directement quel est l'effet sur la santé.</p>
+      </details>
+    </div>
+
+    <div class="carte">
+      <h2>Sources</h2>
+      <ul class="sources">
+        <li><a href="https://berkeleyearth.org/air-pollution-and-cigarette-equivalence" target="_blank" rel="noopener">Berkeley Earth : Air pollution and cigarette equivalence</a></li>
+        <li><a href="https://www.airclim.org/who-air-quality-guidelines" target="_blank" rel="noopener">AirClim : résumé des lignes directrices OMS 2021 sur la qualité de l'air</a></li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Données : serveur AirCarto · Fond de carte : © les contributeurs d'OpenStreetMap · Graphes : Chart.js · Carte : Leaflet
+</footer>
 
 <script>
-// ---------- Réglages : à remplacer ----------
-const CLE = "e81e6a27239bf334796bbbc4a9b1989a";   // clé du groupe (32 caractères)
-const DEVICE_ID = "";      // adresse MAC d'une carte, ou "" pour toutes
+// =====================================================================
+//  RÉGLAGES : à remplacer
+// =====================================================================
+const CLE = "";        // clé du groupe (32 caractères). Laisser vide = MODE DÉMO (données simulées)
+const DEVICE_ID = "";  // adresse MAC d'une carte, ou "" pour toutes
+const MODE_DEMO = (CLE === "");
+
+// Tout ce qui s'affiche dans l'onglet « Le projet » se règle ici.
+const PROJET = {
+  nom: "Notre capteur",
+  slogan: "L'air que l'on respire, en direct",
+  lieu: "Remplacez ce texte par l'endroit où se trouve votre capteur.",
+  lat: 43.2965, lon: 5.3698,   // à remplacer par les coordonnées du capteur (ici : Marseille)
+  etapes: [
+    { date: "Étape 1", titre: "Le défi", texte: "Pourquoi nous avons voulu mesurer la qualité de l'air autour de nous." },
+    { date: "Étape 2", titre: "Le capteur", texte: "Une carte équipée d'un capteur de particules fines (PM1, PM2.5, PM10), de température et d'humidité." },
+    { date: "Étape 3", titre: "L'envoi des données", texte: "La carte envoie ses mesures à intervalles réguliers au serveur AirCarto." },
+    { date: "Étape 4", titre: "Cette page", texte: "Courbes, verdict et comparaisons sont calculés en direct dans votre navigateur à partir de ces mesures." },
+    { date: "Et après ?", titre: "Les suites", texte: "Ajouter d'autres capteurs, comparer plusieurs lieux, croiser avec la météo…" },
+  ],
+  equipe: [
+    { nom: "Prénom Nom", role: "Rôle dans le projet" },
+    { nom: "Prénom Nom", role: "Rôle dans le projet" },
+    { nom: "Prénom Nom", role: "Rôle dans le projet" },
+  ],
+};
 
 // Une moyenne par intervalle selon la période : assez de points pour une
 // courbe lisible, pas trop pour rester rapide (7 jours en brut = 60 000 points).
 const MOYENNE = { "-6h": "5m", "-24h": "15m", "-7d": "1h" };
+const PAS_MIN = { "-6h": 5, "-24h": 15, "-7d": 60 };       // même chose en minutes (démo)
+const NB_POINTS = { "-6h": 72, "-24h": 96, "-7d": 168 };   // nombre de points (démo)
+const LIBELLE_PERIODE = { "-6h": "6 h", "-24h": "24 h", "-7d": "7 jours" };
 
-// Nom affiché et unité de chaque champ de l'API
+// Nom affiché, unité et couleur de chaque champ de l'API
 const CHAMPS = {
-  pm1: ["PM1", "µg/m³"], pm25: ["PM2.5", "µg/m³"], pm10: ["PM10", "µg/m³"],
-  temp: ["Température", "°C"], hum: ["Humidité", "%"],
+  pm1:  ["PM1", "µg/m³", "#8b5cf6"],
+  pm25: ["PM2.5", "µg/m³", "#0f9d8f"],
+  pm10: ["PM10", "µg/m³", "#e0a100"],
+  temp: ["Température", "°C", "#e5502e"],
+  hum:  ["Humidité", "%", "#2f7fd1"],
 };
 
+// Valeurs guides OMS 2021 (µg/m³) et règle de Berkeley Earth
+const OMS = { pm25_jour: 15, pm25_an: 5, pm10_jour: 45, pm10_an: 15 };
+const MICROG_PAR_CIGARETTE = 22;
+
+// Échelle de niveaux (PM2.5), construite autour des valeurs guides de l'OMS
+const NIVEAUX = [
+  { max: 5,        nom: "Excellent", msg: "Air très pur : ouvrez grand les fenêtres !", plage: "≤ 5",    detail: "Sous la valeur guide annuelle de l'OMS" },
+  { max: 15,       nom: "Bon",       msg: "Sous la valeur guide de l'OMS : vous pouvez aérer tranquillement.", plage: "5 – 15", detail: "Sous la valeur guide journalière de l'OMS" },
+  { max: 25,       nom: "Moyen",     msg: "Au-dessus de la recommandation de l'OMS. Aérez brièvement, de préférence hors des heures de pointe.", plage: "15 – 25", detail: "Jusqu'à 1,7 fois la valeur guide journalière" },
+  { max: 50,       nom: "Dégradé",   msg: "Air chargé en particules : limitez les efforts intenses dehors, surtout si vous êtes sensible.", plage: "25 – 50", detail: "Jusqu'à 3,3 fois la valeur guide journalière" },
+  { max: Infinity, nom: "Mauvais",   msg: "Air très chargé : évitez les efforts dehors et aérez le moins possible.", plage: "> 50", detail: "Plus de 3,3 fois la valeur guide journalière" },
+];
+
+// =====================================================================
+//  Outils
+// =====================================================================
+const $ = id => document.getElementById(id);
+const css = nom => getComputedStyle(document.documentElement).getPropertyValue(nom).trim();
+const nfN = (v, d = 1) => v.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
+const plur = (x, mot) => Math.abs(x) >= 2 ? mot + "s" : mot;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const niveauDe = pm => NIVEAUX.findIndex(n => pm <= n.max);
+const heure = t => new Date(t).toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+
+const donnees = { points: [], periode: "-24h" };
 const graphes = {};   // les graphes déjà dessinés, à remplacer au rechargement
 
-// Demande les mesures au serveur et renvoie la liste des points.
+// =====================================================================
+//  Données : serveur réel ou simulation
+// =====================================================================
 async function chargerMesures(periode) {
   const params = new URLSearchParams({ key: CLE, start: periode, freq: MOYENNE[periode] });
   if (DEVICE_ID) params.set("device_id", DEVICE_ID);
@@ -85,66 +537,445 @@ async function chargerMesures(periode) {
   return json.points;
 }
 
-// Dessine (ou redessine) un graphe avec une courbe par champ.
-function dessiner(idCanvas, points, champs) {
-  const etiquettes = points.map(p => new Date(p.time).toLocaleString("fr-FR",
-    { weekday: "short", hour: "2-digit", minute: "2-digit" }));
-  const courbes = champs
-    .filter(c => points.some(p => p[c] !== undefined))   // seulement les champs mesurés
-    .map(c => ({
-      label: CHAMPS[c][0],
-      data: points.map(p => p[c] ?? null),               // null = trou dans la courbe
-      pointRadius: 0,
-      borderWidth: 2,
-    }));
-
-  if (graphes[idCanvas]) graphes[idCanvas].destroy();
-  graphes[idCanvas] = new Chart(document.getElementById(idCanvas), {
-    type: "line",
-    data: { labels: etiquettes, datasets: courbes },
-    options: { interaction: { mode: "index", intersect: false } },
-  });
-  return courbes.length;
+// Générateur pseudo-aléatoire : même instant = mêmes valeurs, donc la démo ne « saute » pas.
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
 }
 
-// Affiche la valeur la plus récente de chaque champ.
-function afficherDerniere(points) {
+// Fausses mesures réalistes : pics aux heures de trafic, cycle jour/nuit, épisodes lents.
+function genererDemo(periode, scenario) {
+  const n = NB_POINTS[periode], msPas = PAS_MIN[periode] * 60000;
+  const fin = Math.floor(Date.now() / msPas) * msPas;
+  const sc = { normal: { k: 1, o: 0 }, pur: { k: 0.3, o: 0 }, pic: { k: 2.4, o: 16 } }[scenario] || { k: 1, o: 0 };
+  const gauss = (h, c, l) => Math.exp(-Math.pow((h - c) / l, 2) / 2);
+  const r1 = x => Math.round(x * 10) / 10;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    const t = fin - (n - 1 - i) * msPas, d = new Date(t);
+    const h = d.getHours() + d.getMinutes() / 60;
+    const rnd = mulberry32(Math.floor(t / 60000));
+    const jours = t / 86400000;
+    const episode = 0.5 + 0.5 * Math.sin(jours * 1.1);
+    const trafic = 7 * gauss(h, 8.3, 1.4) + 9 * gauss(h, 18.7, 1.9);
+    const pm25 = Math.max(0.8, (5 + 9 * episode + trafic) * sc.k + sc.o + (rnd() - 0.5) * 2.2);
+    const cycle = Math.sin((h - 9) / 24 * 2 * Math.PI);
+    pts.push({
+      time: new Date(t).toISOString(),
+      pm1: r1(Math.max(0.3, pm25 * 0.66 + (rnd() - 0.5))),
+      pm25: r1(pm25),
+      pm10: r1(pm25 * 1.55 + 2 + (rnd() - 0.5) * 2),
+      temp: r1(14 + 5 * cycle + 1.5 * Math.sin(jours * 0.8) + (rnd() - 0.5) * 0.4),
+      hum: r1(Math.min(98, Math.max(25, 66 - 13 * cycle + (rnd() - 0.5) * 2))),
+    });
+  }
+  return pts;
+}
+
+// =====================================================================
+//  Statistiques
+// =====================================================================
+function stats(points, champ) {
+  const v = points.filter(p => typeof p[champ] === "number");
+  if (!v.length) return null;
+  let pMin = v[0], pMax = v[0], somme = 0;
+  v.forEach(p => {
+    somme += p[champ];
+    if (p[champ] < pMin[champ]) pMin = p;
+    if (p[champ] > pMax[champ]) pMax = p;
+  });
+  return { min: pMin[champ], tMin: pMin.time, max: pMax[champ], tMax: pMax.time, moy: somme / v.length, n: v.length };
+}
+
+// =====================================================================
+//  Bandeau vedette
+// =====================================================================
+function rendreHero(points) {
+  const derniere = points[points.length - 1];
+  const pm = derniere.pm25;
+  const hero = $("hero");
+  if (typeof pm !== "number") {
+    $("hero-valeur").textContent = "–";
+    $("hero-niveau").textContent = "PM2.5 non reçu";
+    $("hero-msg").textContent = "Ce capteur n'a pas envoyé de PM2.5 sur la dernière mesure.";
+    $("hero-maj").textContent = "";
+    return;
+  }
+  const i = niveauDe(pm);
+  hero.style.setProperty("--hero", "var(--h" + i + ")");
+  $("hero-valeur").textContent = nfN(pm, 1);
+  $("hero-niveau").textContent = NIVEAUX[i].nom;
+  $("hero-msg").textContent = NIVEAUX[i].msg;
+  $("jauge-curseur").style.left = Math.min(pm / 60, 1) * 100 + "%";
+  $("hero-maj").textContent = "Mesure du " + new Date(derniere.time).toLocaleString("fr-FR") + (MODE_DEMO ? " (simulée)" : "");
+  majParticules(pm);
+}
+
+// Petite courbe sans axes pour les tuiles
+function sparkline(points, champ, couleur) {
+  const v = points.map(p => p[champ]).filter(x => typeof x === "number");
+  if (v.length < 2) return "";
+  const d = v.slice(-60), n = d.length, mn = Math.min(...d), mx = Math.max(...d), h = 28, w = 100;
+  const pts = d.map((x, i) =>
+    (i / (n - 1) * w).toFixed(1) + "," + (mx === mn ? h / 2 : h - 2 - (x - mn) / (mx - mn) * (h - 4)).toFixed(1)).join(" ");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">` +
+    `<polyline points="${pts}" fill="none" stroke="${couleur}" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
+// =====================================================================
+//  Tuiles de dernière mesure
+// =====================================================================
+function rendreTuiles(points) {
   const derniere = points[points.length - 1];
   const html = Object.keys(CHAMPS)
-    .filter(c => derniere[c] !== undefined)
+    .filter(c => typeof derniere[c] === "number")
     .map(c => {
-      const [nom, unite] = CHAMPS[c];
-      const valeur = derniere[c].toFixed(1);
-      return `<div class="valeur">${nom}<b>${valeur} ${unite}</b></div>`;
+      const [nom, unite, couleur] = CHAMPS[c];
+      const v = derniere[c];
+      let extra = "";
+      if (c === "pm25") extra = nfN(v / OMS.pm25_jour, 1) + " × la valeur guide OMS (24 h)";
+      else if (c === "pm10") extra = nfN(v / OMS.pm10_jour, 1) + " × la valeur guide OMS (24 h)";
+      else if (c === "pm1") extra = "Pas de valeur guide OMS";
+      return `<div class="tuile"><div class="nom"><i style="background:${couleur}"></i>${nom}</div>` +
+        `<div class="val">${nfN(v, c === "hum" ? 0 : 1)}<small>${unite}</small></div>` +
+        `<div class="extra">${extra}</div>${sparkline(points, c, couleur)}</div>`;
     });
-  document.getElementById("valeurs").innerHTML = html.join("");
+  $("tuiles").innerHTML = html.join("");
 }
 
+// =====================================================================
+//  Comparaisons parlantes
+// =====================================================================
+function cigarettes(n) {
+  const max = 10, entieres = Math.floor(n), reste = n - entieres, affichees = Math.min(Math.ceil(n), max);
+  let html = "";
+  for (let i = 0; i < affichees; i++) html += `<span class="cig" style="--f:${i < entieres ? 1 : reste}"><i></i></span>`;
+  if (n > max) html += `<span class="plus">+ ${nfN(n - max, 0)}</span>`;
+  return html;
+}
+
+function rendreComparaisons(points) {
+  const boite = $("comparaisons");
+  const s = stats(points, "pm25");
+  if (!s) { boite.innerHTML = '<p class="muted">Pas de mesure de PM2.5 sur cette période.</p>'; return; }
+  const moy = s.moy, periode = LIBELLE_PERIODE[donnees.periode];
+
+  // 1) cigarettes
+  const cig = moy / MICROG_PAR_CIGARETTE, an = cig * 365;
+  const cigTexte = cig < 0.1 ? "moins de 0,1" : nfN(cig, cig < 10 ? 1 : 0);
+  const anTexte = an < 10 ? "moins de 10" : nfN(an, 0);
+
+  // 2) face à l'OMS
+  const fois = moy / OMS.pm25_jour;
+  const max = Math.max(moy, OMS.pm25_jour) * 1.08;
+  const pct = v => Math.min(100, v / max * 100).toFixed(1) + "%";
+  const couleurMoy = "var(--l" + niveauDe(moy) + ")";
+
+  // 3) temps de respiration
+  const jours = moy / OMS.pm25_an;
+
+  boite.innerHTML = `
+    <div class="carte">
+      <span class="etiquette">En cigarettes</span>
+      <div class="gros">≈ ${cigTexte} <small>${plur(cig, "cigarette")} / jour</small></div>
+      <div class="cigs" aria-hidden="true">${cigarettes(cig)}</div>
+      <p>Si l'air restait comme sur ces ${periode}, ce serait l'équivalent d'environ <b>${anTexte} cigarettes en un an</b>.</p>
+      <p class="note">Règle de Berkeley Earth : 22 µg/m³ de PM2.5 ≈ 1 cigarette par jour.</p>
+    </div>
+    <div class="carte">
+      <span class="etiquette">Face à l'OMS</span>
+      <div class="gros">× ${nfN(fois, 1)} <small>la valeur guide</small></div>
+      <div class="barres" aria-hidden="true">
+        <div class="barre-ligne"><span>Cet air</span><div class="piste"><i style="width:${pct(moy)};background:${couleurMoy}"></i></div><b>${nfN(moy, 1)}</b></div>
+        <div class="barre-ligne"><span>OMS 24 h</span><div class="piste"><i style="width:${pct(OMS.pm25_jour)};background:var(--muted)"></i></div><b>${OMS.pm25_jour}</b></div>
+        <div class="barre-ligne"><span>OMS annuelle</span><div class="piste"><i style="width:${pct(OMS.pm25_an)};background:var(--muted)"></i></div><b>${OMS.pm25_an}</b></div>
+      </div>
+      <p class="note">PM2.5 moyens sur ${periode}, en µg/m³. Valeurs guides OMS 2021.</p>
+    </div>
+    <div class="carte">
+      <span class="etiquette">En temps de respiration</span>
+      <div class="gros">${nfN(jours, 1)} <small>${plur(jours, "jour")}</small></div>
+      <p>Respirer cet air <b>1 jour</b>, c'est inhaler autant de particules fines que respirer de l'air « aux normes OMS » (5 µg/m³) pendant ${nfN(jours, 1)} ${plur(jours, "jour")}.</p>
+      <p>Sur <b>1 an</b> : autant que ${nfN(jours, 1)} ${plur(jours, "an")} d'air à la valeur guide.</p>
+      <p class="note">Comparaison de quantité de particules inhalées, à rythme de respiration identique.</p>
+    </div>`;
+}
+
+// =====================================================================
+//  Statistiques (onglet Courbes)
+// =====================================================================
+function rendreStats(points) {
+  const lignes = Object.keys(CHAMPS).map(c => {
+    const s = stats(points, c);
+    if (!s) return "";
+    const d = c === "hum" ? 0 : 1, unite = CHAMPS[c][1];
+    return `<tr><th>${CHAMPS[c][0]} <span class="muted">(${unite})</span></th><td>${nfN(s.min, d)}</td><td>${nfN(s.moy, d)}</td><td>${nfN(s.max, d)}</td><td>${heure(s.tMax)}</td></tr>`;
+  }).join("");
+  $("stats").innerHTML = `<table><thead><tr><th>Mesure</th><th>Min</th><th>Moyenne</th><th>Max</th><th>Pic à</th></tr></thead><tbody>${lignes}</tbody></table>`;
+
+  const pm = points.filter(p => typeof p.pm25 === "number");
+  if (pm.length) {
+    const part = pm.filter(p => p.pm25 <= OMS.pm25_jour).length / pm.length * 100;
+    $("anneau").style.setProperty("--p", part.toFixed(1));
+    $("anneau-pct").textContent = Math.round(part) + " %";
+  } else {
+    $("anneau-pct").textContent = "–";
+  }
+}
+
+// =====================================================================
+//  Graphes
+// =====================================================================
+// Dessine (ou redessine) un graphe avec une courbe par champ, plus d'éventuelles lignes de seuil.
+function dessiner(idCanvas, points, champs, seuils = []) {
+  if (!window.Chart) return 0;
+  const etiquettes = points.map(p => heure(p.time));
+  const jeux = champs
+    .filter(c => points.some(p => p[c] !== undefined && p[c] !== null))   // seulement les champs mesurés
+    .map(c => ({
+      label: CHAMPS[c][0], unite: CHAMPS[c][1],
+      data: points.map(p => p[c] ?? null),                                // null = trou dans la courbe
+      borderColor: CHAMPS[c][2], backgroundColor: CHAMPS[c][2] + "22",
+      fill: champs.length === 1, tension: 0.3,
+      pointRadius: 0, pointHoverRadius: 4, borderWidth: 2.2,
+    }));
+  if (jeux.length) {
+    seuils.forEach(s => jeux.push({
+      label: s.label, seuil: true, data: points.map(() => s.valeur),
+      borderColor: s.couleur, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, hidden: !!s.cache, fill: false,
+    }));
+  }
+  const texte = css("--muted"), grille = css("--line");
+  if (graphes[idCanvas]) graphes[idCanvas].destroy();
+  graphes[idCanvas] = new Chart($(idCanvas), {
+    type: "line",
+    data: { labels: etiquettes, datasets: jeux },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { labels: { usePointStyle: true, boxWidth: 8, color: texte } },
+        tooltip: {
+          filter: i => !i.dataset.seuil && i.parsed.y !== null,
+          callbacks: { label: c => ` ${c.dataset.label} : ${nfN(c.parsed.y, 1)} ${c.dataset.unite}` },
+        },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 8, maxRotation: 0, color: texte }, grid: { display: false } },
+        y: { beginAtZero: champs[0] !== "temp" && champs[0] !== "hum", ticks: { color: texte }, grid: { color: grille } },
+      },
+    },
+  });
+  return jeux.length;
+}
+
+function rendreGraphes(points) {
+  dessiner("graphe-pm", points, ["pm1", "pm25", "pm10"], [
+    { label: "Valeur guide OMS PM2.5 24 h (15)", valeur: OMS.pm25_jour, couleur: "#e5502e" },
+    { label: "Valeur guide OMS PM10 24 h (45)", valeur: OMS.pm10_jour, couleur: "#e0a100", cache: true },
+  ]);
+  dessiner("graphe-temp", points, ["temp"]);
+  dessiner("graphe-hum", points, ["hum"]);
+}
+
+// =====================================================================
+//  Particules animées dans le bandeau (leur nombre suit le taux de PM2.5)
+// =====================================================================
+const anim = {
+  cv: null, cx: null, parts: [], raf: 0, l: 0, h: 0, dpr: 1,
+  reduit: matchMedia("(prefers-reduced-motion: reduce)").matches,
+};
+function nouvelleParticule() {
+  return {
+    x: Math.random() * (anim.l || 600), y: Math.random() * (anim.h || 300),
+    r: 0.8 + Math.random() * 3.2, a: 0.15 + Math.random() * 0.4,
+    vx: (Math.random() - 0.5) * 0.35, vy: (Math.random() - 0.5) * 0.25,
+  };
+}
+function animTaille() {
+  const r = anim.cv.parentElement.getBoundingClientRect();
+  anim.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  anim.l = r.width; anim.h = r.height;
+  anim.cv.width = Math.max(1, r.width * anim.dpr);
+  anim.cv.height = Math.max(1, r.height * anim.dpr);
+  animDessiner(false);
+}
+function animDessiner(avancer) {
+  const cx = anim.cx;
+  cx.setTransform(anim.dpr, 0, 0, anim.dpr, 0, 0);
+  cx.clearRect(0, 0, anim.l, anim.h);
+  for (const p of anim.parts) {
+    if (avancer) {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < -5) p.x = anim.l + 5; else if (p.x > anim.l + 5) p.x = -5;
+      if (p.y < -5) p.y = anim.h + 5; else if (p.y > anim.h + 5) p.y = -5;
+    }
+    cx.beginPath();
+    cx.fillStyle = "rgba(255,255,255," + p.a + ")";
+    cx.arc(p.x, p.y, p.r, 0, 6.2832);
+    cx.fill();
+  }
+}
+function animBoucle() { animDessiner(true); anim.raf = requestAnimationFrame(animBoucle); }
+function animDemarrer() {
+  if (anim.raf || anim.reduit || document.hidden || ongletActif !== "aujourdhui") return;
+  anim.raf = requestAnimationFrame(animBoucle);
+}
+function animArreter() { cancelAnimationFrame(anim.raf); anim.raf = 0; }
+function majParticules(pm) {
+  const cible = Math.max(10, Math.min(170, Math.round(pm * 3.2)));
+  while (anim.parts.length < cible) anim.parts.push(nouvelleParticule());
+  if (anim.parts.length > cible) anim.parts.length = cible;
+  if (anim.reduit) animDessiner(false);
+}
+function animInit() {
+  anim.cv = $("particules");
+  anim.cx = anim.cv.getContext("2d");
+  new ResizeObserver(animTaille).observe(anim.cv.parentElement);
+  animTaille();
+  document.addEventListener("visibilitychange", () => document.hidden ? animArreter() : animDemarrer());
+}
+
+// =====================================================================
+//  Onglet « Le projet » et « Comprendre »
+// =====================================================================
+function rendreProjet() {
+  $("nom-projet").textContent = PROJET.nom;
+  $("slogan").textContent = PROJET.slogan;
+  document.title = PROJET.nom + " · Qualité de l'air";
+  $("lieu").textContent = PROJET.lieu;
+  $("frise").innerHTML = PROJET.etapes.map(e =>
+    `<li><div class="date">${esc(e.date)}</div><h3>${esc(e.titre)}</h3><p>${esc(e.texte)}</p></li>`).join("");
+  $("equipe").innerHTML = PROJET.equipe.map(m => {
+    const initiales = m.nom.split(/\s+/).map(x => x[0]).slice(0, 2).join("").toUpperCase();
+    return `<div class="membre"><div class="avatar">${esc(initiales)}</div><div><b>${esc(m.nom)}</b><span>${esc(m.role)}</span></div></div>`;
+  }).join("");
+  $("legende-niveaux").innerHTML = NIVEAUX.map((n, i) =>
+    `<li><i style="background:var(--g${i})"></i><b>${n.nom}</b><span>${n.plage} µg/m³</span><span class="muted">${n.detail}</span></li>`).join("");
+}
+
+let carte = null;
+function initCarte() {
+  if (carte || !window.L) return;
+  carte = L.map("carte-lieu", { scrollWheelZoom: false }).setView([PROJET.lat, PROJET.lon], 14);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(carte);
+  L.circleMarker([PROJET.lat, PROJET.lon], { radius: 10, color: "#fff", weight: 3, fillColor: "#0f766e", fillOpacity: 1 })
+    .addTo(carte).bindPopup("Notre capteur");
+}
+
+// =====================================================================
+//  Onglets
+// =====================================================================
+const ONGLETS = ["aujourdhui", "courbes", "projet", "comprendre"];
+let ongletActif = "aujourdhui";
+
+function afficherOnglet(id, majUrl = true) {
+  if (!ONGLETS.includes(id)) id = "aujourdhui";
+  ongletActif = id;
+  ONGLETS.forEach(o => {
+    $("onglet-" + o).hidden = (o !== id);
+    const b = document.querySelector(`[data-onglet="${o}"]`);
+    b.setAttribute("aria-selected", o === id ? "true" : "false");
+    b.tabIndex = (o === id) ? 0 : -1;
+  });
+  $("outils").hidden = !(id === "aujourdhui" || id === "courbes");
+  if (majUrl) history.replaceState(null, "", "#" + id);
+  setTimeout(() => {
+    Object.values(graphes).forEach(g => g.resize());
+    if (id === "projet") { initCarte(); if (carte) carte.invalidateSize(); }
+  }, 0);
+  id === "aujourdhui" ? animDemarrer() : animArreter();
+}
+
+document.querySelectorAll("[data-onglet]").forEach(b => {
+  b.addEventListener("click", () => afficherOnglet(b.dataset.onglet));
+  b.addEventListener("keydown", e => {
+    const i = ONGLETS.indexOf(b.dataset.onglet);
+    if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+      const suivant = ONGLETS[(i + (e.key === "ArrowRight" ? 1 : ONGLETS.length - 1)) % ONGLETS.length];
+      afficherOnglet(suivant);
+      document.querySelector(`[data-onglet="${suivant}"]`).focus();
+    }
+  });
+});
+window.addEventListener("hashchange", () => afficherOnglet(location.hash.slice(1), false));
+
+// =====================================================================
+//  Thème, export, rafraîchissement
+// =====================================================================
+function majBoutonTheme() {
+  $("theme").textContent = document.documentElement.dataset.theme === "dark" ? "☀️" : "🌙";
+}
+$("theme").addEventListener("click", () => {
+  const sombre = document.documentElement.dataset.theme === "dark";
+  document.documentElement.dataset.theme = sombre ? "light" : "dark";
+  try { localStorage.setItem("theme", sombre ? "light" : "dark"); } catch (e) {}
+  majBoutonTheme();
+  if (donnees.points.length) rendreGraphes(donnees.points);
+});
+
+// Export : séparateur « ; » et virgule décimale, pour s'ouvrir directement dans Excel en français.
+$("csv").addEventListener("click", () => {
+  const pts = donnees.points;
+  if (!pts.length) return;
+  const cols = ["pm1", "pm25", "pm10", "temp", "hum"];
+  const lignes = [["date", ...cols].join(";")];
+  pts.forEach(p => lignes.push([p.time, ...cols.map(c => typeof p[c] === "number" ? String(p[c]).replace(".", ",") : "")].join(";")));
+  const blob = new Blob(["﻿" + lignes.join("\n")], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = MODE_DEMO ? "mesures-demo.csv" : "mesures-capteur.csv";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+});
+
 async function rafraichir() {
-  const etat = document.getElementById("etat");
-  const periode = document.getElementById("periode").value;
+  const etat = $("etat");
+  const periode = $("periode").value;
   try {
-    const points = await chargerMesures(periode);
+    const points = MODE_DEMO ? genererDemo(periode, $("scenario").value) : await chargerMesures(periode);
     if (points.length === 0) {
+      etat.className = "";
       etat.textContent = "Aucune mesure sur cette période : la carte envoie-t-elle ?";
       return;
     }
-    afficherDerniere(points);
-    dessiner("graphe-pm", points, ["pm1", "pm25", "pm10"]);
-    dessiner("graphe-temp", points, ["temp"]);
-    dessiner("graphe-hum", points, ["hum"]);
+    donnees.points = points;
+    donnees.periode = periode;
+    rendreHero(points);
+    rendreTuiles(points);
+    rendreComparaisons(points);
+    rendreStats(points);
+    rendreGraphes(points);
 
-    const date = new Date(points[points.length - 1].time).toLocaleString("fr-FR");
+    const derniere = new Date(points[points.length - 1].time);
+    const age = (Date.now() - derniere) / 60000;
     etat.className = "";
-    etat.textContent = `${points.length} points, moyenne sur ${MOYENNE[periode]}. `
-                     + `Dernière mesure : ${date}.`;
+    etat.textContent = `${points.length} points, moyenne sur ${MOYENNE[periode]}. Dernière mesure : ${derniere.toLocaleString("fr-FR")}.`;
+    if (!MODE_DEMO && age > 90) {
+      etat.className = "erreur";
+      etat.textContent += ` Attention : plus de ${Math.round(age / 60)} h sans mesure, la carte envoie-t-elle ?`;
+    }
   } catch (erreur) {
     etat.className = "erreur";
     etat.textContent = "Erreur : " + erreur.message;
   }
 }
 
-document.getElementById("periode").addEventListener("change", rafraichir);
+// ---------- Démarrage ----------
+rendreProjet();
+majBoutonTheme();
+$("bloc-demo").hidden = !MODE_DEMO;
+animInit();
+afficherOnglet(location.hash.slice(1) || "aujourdhui", false);
+$("periode").addEventListener("change", rafraichir);
+$("scenario").addEventListener("change", rafraichir);
 rafraichir();
 setInterval(rafraichir, 1 * 60 * 1000);   // mise à jour toutes les minutes
 </script>
