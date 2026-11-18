@@ -40,7 +40,6 @@
     --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   }
   [data-theme="dark"] {
-    color-scheme: dark;
     --bg: #0b1411; --surface: #12201b; --surface2: #1a2c25;
     --text: #e7f1ec; --muted: #9db4a8; --line: #25382f;
     --accent: #2dd4bf; --accent-soft: #12332d;
@@ -98,39 +97,36 @@
   main { max-width: 1080px; margin: 0 auto; padding: 18px 16px 40px; }
   section[role="tabpanel"] > * + * { margin-top: 18px; }
 
-  /* ---------- Barre d'outils ---------- */
+  /* ---------- Barres d'outils ---------- */
   .outils {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
     padding: 10px 14px; background: var(--surface); border: 1px solid var(--line);
-    border-radius: 14px; margin-bottom: 18px;
+    border-radius: 14px;
   }
   .outils label { font-weight: 600; font-size: .9rem; }
-  select, .bouton {
-    font: inherit; font-size: .92rem; color: var(--text); background: var(--surface2);
-    border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; cursor: pointer;
-  }
-  .bouton:hover, select:hover { border-color: var(--accent); }
-  #etat { color: var(--muted); font-size: .88rem; margin-left: auto; }
-  #etat.erreur { color: var(--l4); font-weight: 600; }
-
-  /* ---------- Bandeau de l'onglet « Courbes » ---------- */
-  .outils-courbes { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 0; }
-  .rang { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
-  .rang-titre { min-width: 70px; font-family: var(--font-titre); font-size: .98rem; }
-  .presets { display: flex; gap: 6px; margin-left: 4px; }
-  .bouton.actif { background: var(--accent); border-color: var(--accent); color: #fff; }
-  [data-theme="dark"] .bouton.actif { color: var(--bg); }
-  input[type="datetime-local"], input[type="number"] {
+  .groupe { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+  select, input[type="datetime-local"], input[type="number"], .bouton {
     font: inherit; font-size: .92rem; color: var(--text); background: var(--surface2);
     border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px;
   }
-  input[type="datetime-local"]:hover, input[type="number"]:hover { border-color: var(--accent); }
-  .axe { display: flex; align-items: center; gap: 6px; font-size: .88rem; color: var(--muted); }
-  .axe > span:first-child { font-weight: 600; color: var(--text); }
-  .axe input { width: 90px; padding: 5px 8px; }
-  input.invalide { border-color: var(--l4); outline: 2px solid var(--l4); }
-  #etat2 { color: var(--muted); font-size: .88rem; margin-left: auto; }
-  #etat2.erreur { color: var(--l4); font-weight: 600; }
+  select, .bouton { cursor: pointer; }
+  input[type="datetime-local"], input[type="number"] { color-scheme: light; }
+  [data-theme="dark"] input[type="datetime-local"], [data-theme="dark"] input[type="number"] { color-scheme: dark; }
+  .bouton:hover, select:hover, input:hover { border-color: var(--accent); }
+  .bouton[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); font-weight: 600; }
+  .etat { color: var(--muted); font-size: .88rem; margin-left: auto; }
+  .etat.erreur { color: var(--l4); font-weight: 600; }
+
+  /* ---------- Réglage des axes ---------- */
+  .axe-controles {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+    margin-bottom: 10px; font-size: .86rem; color: var(--muted);
+  }
+  .axe-controles .axe-titre { font-weight: 600; color: var(--text); }
+  .axe-controles label { display: flex; align-items: center; gap: 6px; }
+  .axe-controles input[type="number"] { width: 110px; padding: 4px 8px; font-size: .86rem; }
+  .axe-controles input.invalide { border-color: var(--l4); }
+  .axe-controles .bouton { padding: 4px 10px; font-size: .84rem; }
 
   /* ---------- Carte générique ---------- */
   .carte {
@@ -182,7 +178,7 @@
   .tuile .extra { font-size: .78rem; color: var(--muted); min-height: 1.2em; }
   .spark { width: 100%; height: 28px; display: block; margin-top: 6px; }
 
-  /* ---------- Comparaisons ---------- */
+  /* ---------- Comparaison en cigarettes ---------- */
   .titre-section p { margin: 0; color: var(--muted); }
   .compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 14px; }
   .compare .carte { display: flex; flex-direction: column; gap: 8px; }
@@ -194,11 +190,6 @@
   .cig i { position: absolute; inset: 0 auto 0 0; width: calc(var(--f) * 100%); background: linear-gradient(90deg, #cfc7b8, #f3eee3); }
   .cig::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 20%; background: #e8a35c; opacity: .75; }
   .cigs .plus { font-weight: 700; color: var(--muted); font-size: .9rem; }
-  .barres { display: grid; gap: 7px; margin: 4px 0; }
-  .barre-ligne { display: grid; grid-template-columns: 82px 1fr 44px; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); }
-  .barre-ligne .piste { height: 12px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
-  .barre-ligne .piste i { display: block; height: 100%; border-radius: 99px; transition: width .8s cubic-bezier(.2,.8,.2,1); }
-  .barre-ligne b { color: var(--text); text-align: right; }
   .note { font-size: .8rem; color: var(--muted); margin-top: auto; }
 
   /* ---------- Graphes ---------- */
@@ -292,20 +283,21 @@
 
 <main>
 
-  <!-- Barre d'outils : visible sur « Aujourd'hui » et « Courbes » -->
-  <div class="outils" id="outils">
-    <label for="periode">Période</label>
-    <select id="periode">
-      <option value="-6h">6 dernières heures</option>
-      <option value="-24h" selected>24 dernières heures</option>
-      <option value="-7d">7 derniers jours</option>
-    </select>
-    <button class="bouton" id="csv" type="button">⬇ Exporter en CSV</button>
-    <span id="etat">Chargement…</span>
-  </div>
-
   <!-- ================= AUJOURD'HUI ================= -->
   <section id="onglet-aujourdhui" role="tabpanel">
+    <div class="outils">
+      <div class="groupe">
+        <label for="periode">Période</label>
+        <select id="periode">
+          <option value="-6h">6 dernières heures</option>
+          <option value="-24h" selected>24 dernières heures</option>
+          <option value="-7d">7 derniers jours</option>
+        </select>
+      </div>
+      <button class="bouton" id="csv" type="button">⬇ Exporter en CSV</button>
+      <span class="etat" id="etat">Chargement…</span>
+    </div>
+
     <div class="hero" id="hero" style="--hero: var(--h1)">
       <canvas id="particules" aria-hidden="true"></canvas>
       <div class="hero-in">
@@ -338,29 +330,27 @@
       <p>Une façon de se représenter la quantité de particules fines, calculée sur la <b>moyenne de la période choisie</b>.</p>
     </div>
     <div class="compare" id="comparaisons"></div>
-    <p class="note" style="margin-top: 0">Ce sont des ordres de grandeur pour comprendre, pas un diagnostic médical. Le détail des calculs est dans l'onglet « Comprendre ».</p>
   </section>
 
   <!-- ================= COURBES ================= -->
   <section id="onglet-courbes" role="tabpanel" hidden>
-    <div class="outils outils-courbes">
-      <div class="rang">
-        <b class="rang-titre">Période</b>
-        <label for="debut">Du</label>
-        <input type="datetime-local" id="debut">
-        <label for="fin">au</label>
-        <input type="datetime-local" id="fin">
-        <span class="presets">
-          <button class="bouton" type="button" data-duree="6">6 h</button>
-          <button class="bouton" type="button" data-duree="24">24 h</button>
-          <button class="bouton" type="button" data-duree="168">7 jours</button>
-        </span>
+    <div class="outils" id="outils-courbes">
+      <div class="groupe" role="group" aria-label="Raccourcis de période">
+        <label>Raccourcis</label>
+        <button class="bouton" type="button" data-preset="6">6 h</button>
+        <button class="bouton" type="button" data-preset="24">24 h</button>
+        <button class="bouton" type="button" data-preset="168">7 jours</button>
       </div>
-      <div class="rang">
-        <b class="rang-titre">Points</b>
-        <label for="intervalle">Regrouper les mesures par</label>
-        <select id="intervalle">
-          <option value="" selected>Ne pas regrouper (mesures brutes)</option>
+      <div class="groupe">
+        <label for="debut">De</label>
+        <input type="datetime-local" id="debut">
+        <label for="fin">à</label>
+        <input type="datetime-local" id="fin">
+      </div>
+      <div class="groupe">
+        <label for="pas">Intervalle entre les points</label>
+        <select id="pas">
+          <option value="auto" selected>Automatique</option>
           <option value="1m">1 minute</option>
           <option value="5m">5 minutes</option>
           <option value="15m">15 minutes</option>
@@ -368,33 +358,28 @@
           <option value="1h">1 heure</option>
         </select>
       </div>
-      <div class="rang">
-        <b class="rang-titre">Axes</b>
-        <span class="axe"><span>Particules (µg/m³)</span> de <input type="number" step="any" id="ymin-pm" placeholder="auto" aria-label="Particules : minimum de l'axe"> à <input type="number" step="any" id="ymax-pm" placeholder="auto" aria-label="Particules : maximum de l'axe"></span>
-        <span class="axe"><span>Température (°C)</span> de <input type="number" step="any" id="ymin-temp" placeholder="auto" aria-label="Température : minimum de l'axe"> à <input type="number" step="any" id="ymax-temp" placeholder="auto" aria-label="Température : maximum de l'axe"></span>
-        <span class="axe"><span>Humidité (%)</span> de <input type="number" step="any" id="ymin-hum" placeholder="auto" aria-label="Humidité : minimum de l'axe"> à <input type="number" step="any" id="ymax-hum" placeholder="auto" aria-label="Humidité : maximum de l'axe"></span>
-        <button class="bouton" id="axes-auto" type="button">↺ Tout en auto</button>
-      </div>
-      <div class="rang">
-        <button class="bouton" id="csv2" type="button">⬇ Exporter en CSV</button>
-        <span id="etat2">Chargement…</span>
-      </div>
+      <button class="bouton" id="csv-courbes" type="button">⬇ Exporter en CSV</button>
+      <span class="etat" id="etat-courbes">Chargement…</span>
     </div>
+
     <div class="carte">
       <div class="graphe-titre"><h2>Particules (µg/m³)</h2><span>Les lignes en pointillés sont les valeurs guides de l'OMS (clic sur la légende pour les masquer)</span></div>
+      <div class="axe-controles" data-graphe="graphe-pm"></div>
       <div class="graphe"><canvas id="graphe-pm"></canvas></div>
     </div>
     <div class="carte">
       <h2>Température (°C)</h2>
+      <div class="axe-controles" data-graphe="graphe-temp"></div>
       <div class="graphe"><canvas id="graphe-temp"></canvas></div>
     </div>
     <div class="carte">
       <h2>Humidité (%)</h2>
+      <div class="axe-controles" data-graphe="graphe-hum"></div>
       <div class="graphe"><canvas id="graphe-hum"></canvas></div>
     </div>
     <div class="carte">
       <h2>Statistiques sur la période</h2>
-      <p class="muted petit" id="stats-info"></p>
+      <p class="petit muted" id="stats-info"></p>
       <div class="stats-grille">
         <div class="anneau" id="anneau"><div><b id="anneau-pct">–</b>du temps sous la valeur guide OMS (PM2.5 ≤ 15)</div></div>
         <div class="table-scroll" id="stats"></div>
@@ -464,15 +449,8 @@
     </div>
 
     <div class="carte">
-      <h2>Comment sont calculées les comparaisons ?</h2>
-      <details open>
-        <summary>En cigarettes</summary>
-        <p>Les chercheurs de Berkeley Earth ont proposé une règle de pouce : respirer 22 µg/m³ de PM2.5 en moyenne équivaut, côté effets sur la santé, à fumer environ une cigarette par jour. Nous divisons la moyenne de la période par 22, puis multiplions par 365 pour l'année. Attention : cette règle est établie à partir de moyennes annuelles et reste une estimation très approximative. Elle sert surtout à se représenter l'impact. D'autres chercheurs rappellent que les particules d'origines différentes (diesel, industrie, tabac) ne sont pas toxiques de la même façon.</p>
-      </details>
-      <details>
-        <summary>Pourcentage de la valeur guide OMS</summary>
-        <p>C'est un simple rapport : valeur mesurée divisée par la valeur guide journalière de l'OMS (15 µg/m³ pour les PM2.5, 45 µg/m³ pour les PM10). 100 % correspond exactement à la valeur recommandée, 200 % à deux fois cette valeur.</p>
-      </details>
+      <h2>Comment est calculée la comparaison en cigarettes ?</h2>
+      <p>Les chercheurs de Berkeley Earth ont proposé une règle de pouce : respirer 22 µg/m³ de PM2.5 en moyenne équivaut, côté effets sur la santé, à fumer environ une cigarette par jour. Nous divisons la moyenne de la période par 22, puis multiplions par 365 pour l'année. Attention : cette règle est établie à partir de moyennes annuelles et reste une estimation très approximative. Elle sert surtout à se représenter l'impact, ce n'est pas un diagnostic médical. D'autres chercheurs rappellent que les particules d'origines différentes (diesel, industrie, tabac) ne sont pas toxiques de la même façon.</p>
     </div>
 
     <div class="carte">
@@ -517,10 +495,20 @@ const PROJET = {
   ],
 };
 
-// Une moyenne par intervalle selon la période : assez de points pour une
-// courbe lisible, pas trop pour rester rapide (7 jours en brut = 60 000 points).
+// Onglet « Aujourd'hui » : une moyenne par intervalle selon la période.
 const MOYENNE = { "-6h": "5m", "-24h": "15m", "-7d": "1h" };
 const LIBELLE_PERIODE = { "-6h": "6 h", "-24h": "24 h", "-7d": "7 jours" };
+
+// Onglet « Courbes » : libellés des intervalles proposés
+const LIBELLE_PAS = { "1m": "1 min", "5m": "5 min", "15m": "15 min", "30m": "30 min", "1h": "1 h" };
+// Intervalle choisi automatiquement selon la durée affichée (assez de points sans alourdir la page)
+function pasAuto(ms) {
+  const h = ms / 3.6e6;
+  if (h <= 6) return "5m";
+  if (h <= 24) return "15m";
+  if (h <= 48) return "30m";
+  return "1h";
+}
 
 // Nom affiché, unité et couleur de chaque champ de l'API
 const CHAMPS = {
@@ -535,11 +523,11 @@ const CHAMPS = {
 const OMS = { pm25_jour: 15, pm25_an: 5, pm10_jour: 45, pm10_an: 15 };
 const MICROG_PAR_CIGARETTE = 22;
 
-// Échelle de niveaux (PM2.5), construite autour des valeurs guides de l'OMS
+// Échelle de niveaux (PM2.5), construite autour des valeurs guides de l'OMS (capteur extérieur)
 const NIVEAUX = [
   { max: 5,        nom: "Excellent", msg: "Air très pur.", plage: "≤ 5",    detail: "Sous la valeur guide annuelle de l'OMS" },
   { max: 15,       nom: "Bon",       msg: "Sous la valeur guide de l'OMS.", plage: "5 – 15", detail: "Sous la valeur guide journalière de l'OMS" },
-  { max: 25,       nom: "Moyen",     msg: "Au-dessus de la valeur guide journalière de l'OMS.", plage: "15 – 25", detail: "Jusqu'à 1,7 fois la valeur guide journalière" },
+  { max: 25,       nom: "Moyen",     msg: "Au-dessus de la recommandation de l'OMS.", plage: "15 – 25", detail: "Jusqu'à 1,7 fois la valeur guide journalière" },
   { max: 50,       nom: "Dégradé",   msg: "Air chargé en particules : limitez les efforts intenses dehors, surtout si vous êtes sensible.", plage: "25 – 50", detail: "Jusqu'à 3,3 fois la valeur guide journalière" },
   { max: Infinity, nom: "Mauvais",   msg: "Air très chargé : évitez les efforts intenses dehors.", plage: "> 50", detail: "Plus de 3,3 fois la valeur guide journalière" },
 ];
@@ -554,17 +542,32 @@ const plur = (x, mot) => Math.abs(x) >= 2 ? mot + "s" : mot;
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const niveauDe = pm => NIVEAUX.findIndex(n => pm <= n.max);
 const heure = t => new Date(t).toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+const dateHeure = d => new Date(d).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+const pad2 = n => String(n).padStart(2, "0");
+const versInput = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+function duree(ms) {
+  const h = ms / 3.6e6;
+  return h < 48 ? nfN(h, h < 10 ? 1 : 0) + " h" : nfN(h / 24, 1) + " jours";
+}
 
+// Onglet « Aujourd'hui »
 const donnees = { points: [], periode: "-24h" };
+// Onglet « Courbes » : mode "preset" (fenêtre qui glisse jusqu'à maintenant) ou "perso" (dates choisies)
+const courbes = { points: [], mode: "preset", heures: 24, debut: null, fin: null, pas: "15m", charge: false };
 const graphes = {};   // les graphes déjà dessinés, à remplacer au rechargement
+// Limites de l'axe vertical de chaque graphe : null = automatique
+const axes = {
+  "graphe-pm":   { min: null, max: null },
+  "graphe-temp": { min: null, max: null },
+  "graphe-hum":  { min: null, max: null },
+};
 
 // =====================================================================
 //  Données : serveur AirCarto
 // =====================================================================
-// Demande les mesures au serveur et renvoie la liste des points.
-async function chargerMesures(periode, freq) {
-  const params = new URLSearchParams({ key: CLE, start: periode });
-  if (freq) params.set("freq", freq);   // sans freq : mesures brutes, non moyennées
+// Demande les mesures au serveur (start relatif, ex. "-24h") et renvoie la liste des points.
+async function chargerMesures(start, freq) {
+  const params = new URLSearchParams({ key: CLE, start: start, freq: freq });
   if (DEVICE_ID) params.set("device_id", DEVICE_ID);
   const reponse = await fetch("https://api.aircarto.fr/iut-amu/data?" + params);
   const json = await reponse.json();
@@ -636,8 +639,8 @@ function rendreTuiles(points) {
       const [nom, unite, couleur] = CHAMPS[c];
       const v = derniere[c];
       let extra = "";
-      if (c === "pm25") extra = nfN(v / OMS.pm25_jour * 100, 0) + "\u00a0% de la valeur guide OMS (24 h)";
-      else if (c === "pm10") extra = nfN(v / OMS.pm10_jour * 100, 0) + "\u00a0% de la valeur guide OMS (24 h)";
+      if (c === "pm25") extra = nfN(v / OMS.pm25_jour * 100, 0) + " % de la valeur guide OMS (24 h)";
+      else if (c === "pm10") extra = nfN(v / OMS.pm10_jour * 100, 0) + " % de la valeur guide OMS (24 h)";
       else if (c === "pm1") extra = "Pas de valeur guide OMS";
       return `<div class="tuile"><div class="nom"><i style="background:${couleur}"></i>${nom}</div>` +
         `<div class="val">${nfN(v, c === "hum" ? 0 : 1)}<small>${unite}</small></div>` +
@@ -647,7 +650,7 @@ function rendreTuiles(points) {
 }
 
 // =====================================================================
-//  Comparaisons parlantes
+//  Comparaison en cigarettes
 // =====================================================================
 function cigarettes(n) {
   const max = 10, entieres = Math.floor(n), reste = n - entieres, affichees = Math.min(Math.ceil(n), max);
@@ -663,11 +666,9 @@ function rendreComparaisons(points) {
   if (!s) { boite.innerHTML = '<p class="muted">Pas de mesure de PM2.5 sur cette période.</p>'; return; }
   const moy = s.moy, periode = LIBELLE_PERIODE[donnees.periode];
 
-  // 1) cigarettes
   const cig = moy / MICROG_PAR_CIGARETTE, an = cig * 365;
   const cigTexte = cig < 0.1 ? "moins de 0,1" : nfN(cig, cig < 10 ? 1 : 0);
   const anTexte = an < 10 ? "moins de 10" : nfN(an, 0);
-
 
   boite.innerHTML = `
     <div class="carte">
@@ -675,15 +676,14 @@ function rendreComparaisons(points) {
       <div class="gros">≈ ${cigTexte} <small>${plur(cig, "cigarette")} / jour</small></div>
       <div class="cigs" aria-hidden="true">${cigarettes(cig)}</div>
       <p>Si l'air restait comme sur ces ${periode}, ce serait l'équivalent d'environ <b>${anTexte} cigarettes en un an</b>.</p>
-      <p class="note">Règle de Berkeley Earth : 22 µg/m³ de PM2.5 ≈ 1 cigarette par jour.</p>
+      <p class="note">Règle de Berkeley Earth : 22 µg/m³ de PM2.5 ≈ 1 cigarette par jour. Ordre de grandeur, pas un diagnostic médical (détail dans l'onglet « Comprendre »).</p>
     </div>`;
 }
 
 // =====================================================================
 //  Statistiques (onglet Courbes)
 // =====================================================================
-function rendreStats(points, info = "") {
-  $("stats-info").textContent = info;
+function rendreStats(points) {
   const lignes = Object.keys(CHAMPS).map(c => {
     const s = stats(points, c);
     if (!s) return "";
@@ -691,6 +691,11 @@ function rendreStats(points, info = "") {
     return `<tr><th>${CHAMPS[c][0]} <span class="muted">(${unite})</span></th><td>${nfN(s.min, d)}</td><td>${nfN(s.moy, d)}</td><td>${nfN(s.max, d)}</td><td>${heure(s.tMax)}</td></tr>`;
   }).join("");
   $("stats").innerHTML = `<table><thead><tr><th>Mesure</th><th>Min</th><th>Moyenne</th><th>Max</th><th>Pic à</th></tr></thead><tbody>${lignes}</tbody></table>`;
+
+  // On précise sur quoi portent la moyenne, le min et le max
+  $("stats-info").textContent =
+    `La moyenne, le min et le max sont calculés sur ${points.length} points (un point toutes les ${LIBELLE_PAS[courbes.pas] || courbes.pas}), ` +
+    `du ${dateHeure(courbes.debut)} au ${dateHeure(courbes.fin)}, soit ${duree(courbes.fin - courbes.debut)}.`;
 
   const pm = points.filter(p => typeof p.pm25 === "number");
   if (pm.length) {
@@ -706,17 +711,13 @@ function rendreStats(points, info = "") {
 //  Graphes
 // =====================================================================
 // Dessine (ou redessine) un graphe avec une courbe par champ, plus d'éventuelles lignes de seuil.
-function dessiner(idCanvas, points, champs, seuils = [], etiquette = heure) {
+function dessiner(idCanvas, points, champs, seuils = []) {
   if (!window.Chart) return 0;
-  const etiquettes = points.map(p => etiquette(p.time));
-  // On retient les courbes masquées via la légende pour ne pas les réafficher à chaque mise à jour.
-  const cache = {}, ancien = graphes[idCanvas];
-  if (ancien) ancien.data.datasets.forEach((d, i) => { cache[d.label] = !ancien.isDatasetVisible(i); });
-  const ax = axeDe(idCanvas);
+  const etiquettes = points.map(p => heure(p.time));
   const jeux = champs
     .filter(c => points.some(p => p[c] !== undefined && p[c] !== null))   // seulement les champs mesurés
     .map(c => ({
-      label: CHAMPS[c][0], unite: CHAMPS[c][1], hidden: cache[CHAMPS[c][0]] ?? false,
+      label: CHAMPS[c][0], unite: CHAMPS[c][1],
       data: points.map(p => p[c] ?? null),                                // null = trou dans la courbe
       borderColor: CHAMPS[c][2], backgroundColor: CHAMPS[c][2] + "22",
       fill: champs.length === 1, tension: 0.3,
@@ -725,30 +726,37 @@ function dessiner(idCanvas, points, champs, seuils = [], etiquette = heure) {
   if (jeux.length) {
     seuils.forEach(s => jeux.push({
       label: s.label, seuil: true, data: points.map(() => s.valeur),
-      borderColor: s.couleur, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, hidden: cache[s.label] ?? !!s.cache, fill: false,
+      borderColor: s.couleur, borderDash: [6, 5], borderWidth: 1.5, pointRadius: 0, hidden: !!s.cache, fill: false,
     }));
   }
   const texte = css("--muted"), grille = css("--line");
+  const lim = axes[idCanvas] || { min: null, max: null };
   if (graphes[idCanvas]) graphes[idCanvas].destroy();
   graphes[idCanvas] = new Chart($(idCanvas), {
     type: "line",
     data: { labels: etiquettes, datasets: jeux },
     options: {
-      responsive: true, maintainAspectRatio: false, animation: false,
+      responsive: true, maintainAspectRatio: false,
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { labels: { usePointStyle: true, boxWidth: 8, color: texte } },
         tooltip: {
           filter: i => !i.dataset.seuil && i.parsed.y !== null,
-          callbacks: { title: i => dateComplete.format(new Date(points[i[0].dataIndex].time)), label: c => ` ${c.dataset.label} : ${nfN(c.parsed.y, 1)} ${c.dataset.unite}` },
+          callbacks: { label: c => ` ${c.dataset.label} : ${nfN(c.parsed.y, 1)} ${c.dataset.unite}` },
         },
       },
       scales: {
         x: { ticks: { maxTicksLimit: 8, maxRotation: 0, color: texte }, grid: { display: false } },
-        y: { beginAtZero: champs[0] !== "temp" && champs[0] !== "hum", ticks: { color: texte }, grid: { color: grille } },
+        // Axe vertical : automatique tant que min / max ne sont pas renseignés
+        y: {
+          beginAtZero: champs[0] !== "temp" && champs[0] !== "hum",
+          min: lim.min ?? undefined, max: lim.max ?? undefined,
+          ticks: { color: texte }, grid: { color: grille },
+        },
       },
     },
   });
+  majPlaceholders(idCanvas);
   return jeux.length;
 }
 
@@ -759,6 +767,59 @@ function rendreGraphes(points) {
   ]);
   dessiner("graphe-temp", points, ["temp"]);
   dessiner("graphe-hum", points, ["hum"]);
+}
+
+function viderCourbes() {
+  Object.keys(axes).forEach(id => { if (graphes[id]) { graphes[id].destroy(); delete graphes[id]; } });
+  $("stats").innerHTML = '<p class="muted">Aucune mesure sur cette période.</p>';
+  $("stats-info").textContent = "";
+  $("anneau-pct").textContent = "–";
+  $("anneau").style.setProperty("--p", 0);
+}
+
+// =====================================================================
+//  Réglage des axes verticaux (automatique par défaut)
+// =====================================================================
+// Affiche dans les cases vides la valeur automatique actuelle (« auto : 12 »).
+function majPlaceholders(id) {
+  const g = graphes[id], div = document.querySelector(`.axe-controles[data-graphe="${id}"]`);
+  if (!g || !div || !g.scales || !g.scales.y) return;
+  const arrondi = x => String(Math.round(x * 10) / 10).replace(".", ",");
+  div.querySelector('[data-lim="min"]').placeholder = "auto : " + arrondi(g.scales.y.min);
+  div.querySelector('[data-lim="max"]').placeholder = "auto : " + arrondi(g.scales.y.max);
+}
+
+function appliquerAxes(id) {
+  const g = graphes[id], a = axes[id];
+  const div = document.querySelector(`.axe-controles[data-graphe="${id}"]`);
+  const invalide = a.min !== null && a.max !== null && a.min >= a.max;
+  div.querySelectorAll("input").forEach(i => i.classList.toggle("invalide", invalide));
+  if (invalide || !g) return;   // min doit rester inférieur à max
+  g.options.scales.y.min = a.min ?? undefined;
+  g.options.scales.y.max = a.max ?? undefined;
+  g.update("none");
+  majPlaceholders(id);
+}
+
+function construireAxes() {
+  document.querySelectorAll(".axe-controles").forEach(div => {
+    const id = div.dataset.graphe;
+    div.innerHTML =
+      `<span class="axe-titre">Axe vertical</span>` +
+      `<label>min <input type="number" step="any" data-lim="min" placeholder="auto"></label>` +
+      `<label>max <input type="number" step="any" data-lim="max" placeholder="auto"></label>` +
+      `<button class="bouton" type="button" data-reset title="Revenir au réglage automatique">↺ Auto</button>`;
+    div.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => {
+      const v = inp.value.trim() === "" ? null : Number(inp.value);
+      axes[id][inp.dataset.lim] = (v === null || isNaN(v)) ? null : v;
+      appliquerAxes(id);
+    }));
+    div.querySelector("[data-reset]").addEventListener("click", () => {
+      axes[id] = { min: null, max: null };
+      div.querySelectorAll("input").forEach(i => { i.value = ""; });
+      appliquerAxes(id);
+    });
+  });
 }
 
 // =====================================================================
@@ -864,12 +925,12 @@ function afficherOnglet(id, majUrl = true) {
     b.setAttribute("aria-selected", o === id ? "true" : "false");
     b.tabIndex = (o === id) ? 0 : -1;
   });
-  $("outils").hidden = !(id === "aujourdhui" || id === "courbes");
   if (majUrl) history.replaceState(null, "", "#" + id);
   setTimeout(() => {
     Object.values(graphes).forEach(g => g.resize());
     if (id === "projet") { initCarte(); if (carte) carte.invalidateSize(); }
   }, 0);
+  if (id === "courbes" && !courbes.charge) rafraichirCourbes();
   id === "aujourdhui" ? animDemarrer() : animArreter();
 }
 
@@ -887,7 +948,7 @@ document.querySelectorAll("[data-onglet]").forEach(b => {
 window.addEventListener("hashchange", () => afficherOnglet(location.hash.slice(1), false));
 
 // =====================================================================
-//  Thème, export, rafraîchissement
+//  Thème, export
 // =====================================================================
 function majBoutonTheme() {
   $("theme").textContent = document.documentElement.dataset.theme === "dark" ? "☀️" : "🌙";
@@ -897,12 +958,11 @@ $("theme").addEventListener("click", () => {
   document.documentElement.dataset.theme = sombre ? "light" : "dark";
   try { localStorage.setItem("theme", sombre ? "light" : "dark"); } catch (e) {}
   majBoutonTheme();
-  if (donnees.points.length) rendreGraphes(donnees.points);
+  if (courbes.points.length) rendreGraphes(courbes.points);
 });
 
 // Export : séparateur « ; » et virgule décimale, pour s'ouvrir directement dans Excel en français.
-$("csv").addEventListener("click", () => {
-  const pts = donnees.points;
+function exporterCSV(pts) {
   if (!pts.length) return;
   const cols = ["pm1", "pm25", "pm10", "temp", "hum"];
   const lignes = [["date", ...cols].join(";")];
@@ -913,20 +973,25 @@ $("csv").addEventListener("click", () => {
   a.download = "mesures-capteur.csv";
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-});
+}
+$("csv").addEventListener("click", () => exporterCSV(donnees.points));
+$("csv-courbes").addEventListener("click", () => exporterCSV(courbes.points));
 
+// =====================================================================
+//  Rafraîchissement : onglet « Aujourd'hui »
+// =====================================================================
 async function rafraichir() {
   const etat = $("etat");
   const periode = $("periode").value;
   if (CLE === "") {
-    etat.className = "erreur";
+    etat.className = "etat erreur";
     etat.textContent = "Clé manquante : collez la clé du groupe dans la constante CLE au début du script.";
     return;
   }
   try {
-    const points = await chargerMesures(periode);
+    const points = await chargerMesures(periode, MOYENNE[periode]);
     if (points.length === 0) {
-      etat.className = "";
+      etat.className = "etat";
       etat.textContent = "Aucune mesure sur cette période : la carte envoie-t-elle ?";
       return;
     }
@@ -935,31 +1000,101 @@ async function rafraichir() {
     rendreHero(points);
     rendreTuiles(points);
     rendreComparaisons(points);
+
+    const derniere = new Date(points[points.length - 1].time);
+    const age = (Date.now() - derniere) / 60000;
+    etat.className = "etat";
+    etat.textContent = `Dernière mesure : ${derniere.toLocaleString("fr-FR")}.`;
+    if (age > 90) {
+      etat.className = "etat erreur";
+      etat.textContent += ` Attention : plus de ${Math.round(age / 60)} h sans mesure, la carte envoie-t-elle ?`;
+    }
+  } catch (erreur) {
+    etat.className = "etat erreur";
+    etat.textContent = "Erreur : " + erreur.message;
+  }
+}
+
+// =====================================================================
+//  Rafraîchissement : onglet « Courbes »
+// =====================================================================
+function remplirChampsDates() {
+  const fin = new Date(), debut = new Date(fin - courbes.heures * 3.6e6);
+  $("debut").value = versInput(debut);
+  $("fin").value = versInput(fin);
+}
+
+function marquerPreset() {
+  document.querySelectorAll("[data-preset]").forEach(b =>
+    b.setAttribute("aria-pressed", courbes.mode === "preset" && Number(b.dataset.preset) === courbes.heures ? "true" : "false"));
+}
+
+async function rafraichirCourbes() {
+  const etat = $("etat-courbes");
+  const erreur = msg => { etat.className = "etat erreur"; etat.textContent = msg; };
+  if (CLE === "") return erreur("Clé manquante : collez la clé du groupe dans la constante CLE au début du script.");
+
+  // En mode « raccourci », la fenêtre glisse jusqu'à maintenant
+  if (courbes.mode === "preset") remplirChampsDates();
+  const debut = new Date($("debut").value), fin = new Date($("fin").value);
+  if (isNaN(debut) || isNaN(fin)) return erreur("Choisissez une date et une heure de début et de fin.");
+  if (debut >= fin) return erreur("L'heure de début doit être avant l'heure de fin.");
+  if (debut > Date.now()) return erreur("Le début est dans le futur : aucune mesure à afficher.");
+
+  const pas = $("pas").value === "auto" ? pasAuto(fin - debut) : $("pas").value;
+  try {
+    // Le serveur est interrogé depuis le début choisi jusqu'à maintenant, puis on garde la plage demandée.
+    const heures = Math.ceil((Date.now() - debut) / 3.6e6) + 1;
+    const tous = await chargerMesures("-" + heures + "h", pas);
+    const points = tous.filter(p => { const t = new Date(p.time); return t >= debut && t <= fin; });
+
+    courbes.points = points; courbes.debut = debut; courbes.fin = fin; courbes.pas = pas; courbes.charge = true;
+    if (!points.length) {
+      viderCourbes();
+      etat.className = "etat";
+      etat.textContent = "Aucune mesure sur cette plage : la carte envoyait-elle à ce moment-là ?";
+      return;
+    }
     rendreStats(points);
     rendreGraphes(points);
 
     const derniere = new Date(points[points.length - 1].time);
+    etat.className = "etat";
+    etat.textContent = `${points.length} points, un toutes les ${LIBELLE_PAS[pas] || pas}. Dernière mesure : ${derniere.toLocaleString("fr-FR")}.`;
     const age = (Date.now() - derniere) / 60000;
-    etat.className = "";
-    etat.textContent = `${points.length} points, moyenne sur ${MOYENNE[periode]}. Dernière mesure : ${derniere.toLocaleString("fr-FR")}.`;
-    if (age > 90) {
-      etat.className = "erreur";
+    if (courbes.mode === "preset" && age > 90) {
+      etat.className = "etat erreur";
       etat.textContent += ` Attention : plus de ${Math.round(age / 60)} h sans mesure, la carte envoie-t-elle ?`;
     }
-  } catch (erreur) {
-    etat.className = "erreur";
-    etat.textContent = "Erreur : " + erreur.message;
+  } catch (e) {
+    erreur("Erreur : " + e.message);
   }
 }
+
+document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => {
+  courbes.mode = "preset"; courbes.heures = Number(b.dataset.preset);
+  marquerPreset(); rafraichirCourbes();
+}));
+["debut", "fin"].forEach(id => $(id).addEventListener("change", () => {
+  courbes.mode = "perso"; marquerPreset(); rafraichirCourbes();
+}));
+$("pas").addEventListener("change", rafraichirCourbes);
 
 // ---------- Démarrage ----------
 rendreProjet();
 majBoutonTheme();
 animInit();
+construireAxes();
+remplirChampsDates();
+marquerPreset();
 afficherOnglet(location.hash.slice(1) || "aujourdhui", false);
 $("periode").addEventListener("change", rafraichir);
 rafraichir();
-setInterval(rafraichir, 1 * 60 * 1000);   // mise à jour toutes les minutes
+// Mise à jour toutes les minutes (l'onglet Courbes ne bouge pas si on a choisi des dates précises)
+setInterval(() => {
+  rafraichir();
+  if (courbes.charge && courbes.mode === "preset") rafraichirCourbes();
+}, 60 * 1000);
 </script>
 </body>
 </html>
