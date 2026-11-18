@@ -47,12 +47,12 @@
   <canvas id="graphe-pm"></canvas>
 </div>
 <div class="carte">
-  <h2>Température (°C) et humidité (%)</h2>
-  <canvas id="graphe-meteo"></canvas>
+  <h2>Température (°C)</h2>
+  <canvas id="graphe-temp"></canvas>
 </div>
-<div class="carte" id="carte-co2">
-  <h2>CO₂ (ppm)</h2>
-  <canvas id="graphe-co2"></canvas>
+<div class="carte">
+  <h2>Humidité (%)</h2>
+  <canvas id="graphe-hum"></canvas>
 </div>
 
 <script>
@@ -67,7 +67,7 @@ const MOYENNE = { "-6h": "5m", "-24h": "15m", "-7d": "1h" };
 // Nom affiché et unité de chaque champ de l'API
 const CHAMPS = {
   pm1: ["PM1", "µg/m³"], pm25: ["PM2.5", "µg/m³"], pm10: ["PM10", "µg/m³"],
-  temp: ["Température", "°C"], hum: ["Humidité", "%"], co2: ["CO₂", "ppm"],
+  temp: ["Température", "°C"], hum: ["Humidité", "%"],
 };
 
 const graphes = {};   // les graphes déjà dessinés, à remplacer au rechargement
@@ -114,7 +114,7 @@ function afficherDerniere(points) {
     .filter(c => derniere[c] !== undefined)
     .map(c => {
       const [nom, unite] = CHAMPS[c];
-      const valeur = derniere[c].toFixed(c === "co2" ? 0 : 1);   // CO2 sans décimale
+      const valeur = derniere[c].toFixed(1);
       return `<div class="valeur">${nom}<b>${valeur} ${unite}</b></div>`;
     });
   document.getElementById("valeurs").innerHTML = html.join("");
@@ -131,10 +131,8 @@ async function rafraichir() {
     }
     afficherDerniere(points);
     dessiner("graphe-pm", points, ["pm1", "pm25", "pm10"]);
-    dessiner("graphe-meteo", points, ["temp", "hum"]);
-    const avecCo2 = dessiner("graphe-co2", points, ["co2"]);
-    // Pas de CO2 sur un NebuleAir : on cache son graphe
-    document.getElementById("carte-co2").hidden = (avecCo2 === 0);
+    dessiner("graphe-temp", points, ["temp"]);
+    dessiner("graphe-hum", points, ["hum"]);
 
     const date = new Date(points[points.length - 1].time).toLocaleString("fr-FR");
     etat.className = "";
